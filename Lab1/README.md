@@ -1,5 +1,7 @@
 # Lab 1: Edge AI First Try
 
+Read the [Prerequisites](./Prerequisites.md) file before starting the lab.
+
 In this lab, you will have a first try on Edge AI by serving the LLM, TTS, and ASR models on the Jetson Orin. You will be using the following models:
 
 | Model Type | Model Name                    |
@@ -8,6 +10,12 @@ In this lab, you will have a first try on Edge AI by serving the LLM, TTS, and A
 | TTS     | Qwen3-TTS-12Hz-0.6B-Base         |
 | ASR     | Qwen3-ASR-0.6B                   |
 
+Clone the repository to your local machine by running the following command:
+```
+cd ~
+git clone https://github.com/stzhang-patrick/IEMS5709-25R2-Edge-Computing.git
+cd IEMS5709-25R2-Edge-Computing/Lab1
+```
 
 ## Environment Setup
 
@@ -87,3 +95,7 @@ https://huggingface.co/Qwen/Qwen3-ASR-0.6B
 https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base
 
 https://www.jetson-ai-lab.com/tutorials/genai-on-jetson-llms-vlms/
+
+# Submit Your Work
+
+Read the [Assignment](Assignment.md) file for the submission instructions.
