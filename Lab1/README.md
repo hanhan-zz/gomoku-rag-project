@@ -23,7 +23,10 @@ First, you need to set up the environment by following the instructions in the [
 
 ## Model Download
 
-Download the models to local directory by running the following commands:
+For simplicity, TAs have already downloaded the models to `/opt/models` directory. You can skip the following steps and directly use the models in `/opt/models` directory. Please remember to replace the model path in the docker command and the scripts with the actual path under `/opt/models`.
+
+
+If you prefer to download the models on your own, you can run the following commands:
 
 ```
 conda activate qwen3
@@ -31,6 +34,7 @@ pip install -U huggingface_hub
 python download_model.py
 ```
 Two models will be downloaded to the local directory `Qwen3-ASR-0.6B`, `Qwen3-TTS-12Hz-0.6B-Base` and `Qwen3-4B-quantized.w4a16` under `Lab1` directory.
+
 
 ## LLM Serving
 

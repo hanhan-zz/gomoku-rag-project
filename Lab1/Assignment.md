@@ -2,7 +2,7 @@
 
 ## Task 1: LLM Serving
 
-Based on the eval_llm.py script, please create a new script `test_llm_throughput.py` to test the throughput of the LLM model under different concurrency levels. 
+Based on the `eval_llm.py` script, please create a new script `test_llm_throughput.py` to test the throughput of the LLM model under different concurrency levels. 
 
 Run the script and plot the throughput curve. Submit your script and the throughput curve as `llm_throughput.png`.
 
