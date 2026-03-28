@@ -53,7 +53,7 @@
       try {
         // JS runs in the user's browser on the host, not inside the frontend container.
         // Publish backend as -p 6060:6060 so localhost:6060 reaches the API.
-        const response = await fetch('http://localhost:6060/calculate', {
+        const response = await fetch(`http://${window.location.hostname}:6060/calculate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ a: parseFloat(numA), b: parseFloat(numB), op })

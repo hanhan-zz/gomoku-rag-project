@@ -5,6 +5,9 @@ Lab1/Qwen3-ASR-0.6B/
 Lab1/Qwen3-4B-quantized.w4a16/
 Lab1/output_voice_clone.wav
 
+# Lab3 student submissions
+Lab3/screen-record.mp4
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
