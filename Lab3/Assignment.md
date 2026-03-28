@@ -16,7 +16,9 @@ Key points to consider:
 
 After all services are running, open your browser and go to `http://localhost:3000` (or `http://<jetson-ip>:3000` if accessing remotely).
 
-First-time users will be asked to create an admin account. After logging in:
+First-time users will be asked to create an admin account( If no such page, it may because of your groupmate have already created it using the 3000 port, you may **change to another port** when making docker-compose.yml)
+
+After logging in:
 
 ### 2.1 Connect LLM (vLLM)
 
