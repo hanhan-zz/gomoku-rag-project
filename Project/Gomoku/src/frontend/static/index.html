@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gomoku - Human vs AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gomoku - Human vs AI</h1>
+            <p class="subtitle">五子棋 - 你执黑棋先行</p>
+        </header>
+
+        <div class="game-info">
+            <div class="status-panel">
+                <div id="status" class="status waiting">等待开始...</div>
+                <div id="reasoning" class="reasoning hidden"></div>
+            </div>
+            <div class="score-panel">
+                <div class="player-score">
+                    <span class="piece black"></span>
+                    <span>你 (黑)</span>
+                </div>
+                <div class="vs">VS</div>
+                <div class="player-score">
+                    <span class="piece white"></span>
+                    <span>AI (白)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <canvas id="board" width="480" height="480"></canvas>
+        </div>
+
+        <div class="controls">
+            <button id="newGameBtn" class="btn btn-primary">新游戏</button>
+            <button id="undoBtn" class="btn btn-secondary" disabled>悔棋</button>
+        </div>
+
+        <div class="message-box hidden" id="messageBox">
+            <div class="message-content">
+                <span id="messageText"></span>
+            </div>
+            <button id="closeMessage" class="close-btn">&times;</button>
+        </div>
+    </div>
+
+    <script src="/static/game.js"></script>
+</body>
+</html>

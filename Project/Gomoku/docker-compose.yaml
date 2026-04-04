@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "9898:9898"
+    environment:
+      - LLM_API_URL=http://host.docker.internal:8000/v1
+    volumes:
+      - ./src/frontend:/app
+    command: uvicorn app:app --host 0.0.0.0 --port 9898 --reload
+
+  # Uncomment when LLM service is needed
+  # llm-service:
+  #   image: ghcr.io/nvidia-ai-iot/vllm:latest-jetson-orin
+  #   runtime: nvidia
+  #   volumes:
+  #     - ${MODEL_PATH}:/model
+  #   ports:
+  #     - "8000:8000"
+  #   command: >
+  #     vllm serve /model
+  #       --host 0.0.0.0
+  #       --port 8000
+  #       --gpu-memory-utilization 0.50
