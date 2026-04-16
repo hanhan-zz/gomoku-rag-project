@@ -1,9 +1,0 @@
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY frontend.html .
-
-EXPOSE 5959
-
-CMD ["python", "-m", "http.server", "5959"]
