@@ -1,50 +1,147 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gomoku - Human vs AI</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gomoku with Explain & Review</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+
+        .topbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .board-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: #deb887;
+            border-radius: 8px;
+        }
+
+        .info {
+            margin-top: 12px;
+        }
+
+        #status {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        #reasoning {
+            background: #f8fafc;
+            border-left: 4px solid #2563eb;
+            padding: 10px;
+            border-radius: 6px;
+            min-height: 20px;
+        }
+
+        .side-panels {
+            flex: 1;
+            min-width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            min-height: 120px;
+        }
+
+        .panel h3 {
+            margin-top: 0;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Gomoku - Human vs AI</h1>
-            <p class="subtitle">五子棋 - 你执黑棋先行</p>
-        </header>
+        <h1>Gomoku with Explain & Review</h1>
 
-        <div class="game-info">
-            <div class="status-panel">
-                <div id="status" class="status waiting">等待开始...</div>
-                <div id="reasoning" class="reasoning hidden"></div>
-            </div>
-            <div class="score-panel">
-                <div class="player-score">
-                    <span class="piece black"></span>
-                    <span>你 (黑)</span>
-                </div>
-                <div class="vs">VS</div>
-                <div class="player-score">
-                    <span class="piece white"></span>
-                    <span>AI (白)</span>
+        <div class="topbar">
+            <button id="newGameBtn">New Game</button>
+            <button id="whyBtn">Why did AI move here?</button>
+            <button id="reviewBtn">Post-game Review</button>
+        </div>
+
+        <div class="layout">
+            <div class="board-section">
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+                <div class="info">
+                    <div id="status">Loading...</div>
+                    <div id="reasoning"></div>
                 </div>
             </div>
-        </div>
 
-        <div class="board-container">
-            <canvas id="board" width="480" height="480"></canvas>
-        </div>
+            <div class="side-panels">
+                <div id="explainPanel" class="panel">
+                    <h3>AI Move Explanation</h3>
+                    <p>Click “Why did AI move here?” after the AI makes a move.</p>
+                </div>
 
-        <div class="controls">
-            <button id="newGameBtn" class="btn btn-primary">新游戏</button>
-            <button id="undoBtn" class="btn btn-secondary" disabled>悔棋</button>
-        </div>
-
-        <div class="message-box hidden" id="messageBox">
-            <div class="message-content">
-                <span id="messageText"></span>
+                <div id="reviewPanel" class="panel">
+                    <h3>Post-game Review</h3>
+                    <p>Click “Post-game Review” to generate a summary of the current game.</p>
+                </div>
             </div>
-            <button id="closeMessage" class="close-btn">&times;</button>
         </div>
     </div>
 

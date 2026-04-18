@@ -1,0 +1,32 @@
+[
+    {
+      "id": "k1",
+      "topic": "defense",
+      "keywords": ["block", "defense", "open four", "threat"],
+      "text": "If the opponent has an open four, blocking is usually mandatory."
+    },
+    {
+      "id": "k2",
+      "topic": "center",
+      "keywords": ["center", "opening", "influence"],
+      "text": "Control near the center usually gives more extension options in Gomoku."
+    },
+    {
+      "id": "k3",
+      "topic": "attack",
+      "keywords": ["three", "double threat", "fork"],
+      "text": "Building connected threats can force the opponent into passive defense."
+    },
+    {
+      "id": "k4",
+      "topic": "review",
+      "keywords": ["review", "mistake", "missed defense"],
+      "text": "A common mistake is expanding attack while ignoring an immediate defensive response."
+    },
+    {
+      "id": "k5",
+      "topic": "endgame",
+      "keywords": ["win", "winning", "forced"],
+      "text": "When a forced winning line appears, prioritizing it is often stronger than positional expansion."
+    }
+  ]
