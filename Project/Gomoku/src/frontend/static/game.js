@@ -39,6 +39,9 @@ const whyBtn = document.getElementById('whyBtn');
 const reviewBtn = document.getElementById('reviewBtn');
 const explainPanel = document.getElementById('explainPanel');
 const reviewPanel = document.getElementById('reviewPanel');
+const qaBtn = document.getElementById('qaBtn');
+const qaInput = document.getElementById('qaInput');
+const qaResult = document.getElementById('qaResult');
 
 function createEmptyBoard() {
     return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
@@ -236,7 +239,7 @@ async function playTurn(x, y) {
             let message = `play-turn failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 
@@ -289,7 +292,7 @@ async function askWhy() {
             let message = `why failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 
@@ -304,6 +307,77 @@ async function askWhy() {
         updateButtons();
     }
 }
+
+qaBtn.addEventListener('click', async () => {
+    qaResult.innerHTML = "AI分析中...";
+
+    const inputEl = document.getElementById("qaInput");
+    const question = inputEl.value.trim();
+
+    try {
+        const response = await fetch('/api/qa', {
+            // const response = await fetch('http://localhost:8080/api/qa', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                // board: [
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                //     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                // ],
+                board: board,
+                question: question
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.type === "moves") {
+
+            const recs = data.data.top3 || [];
+
+            if (recs.length === 0) {
+                qaResult.innerHTML = "没有推荐结果";
+                return;
+            }
+
+            qaResult.classList.remove("placeholder");
+
+            qaResult.innerHTML = recs.map((r, i) => {
+                const row = r.move[0];
+                const col = r.move[1];
+
+                return `
+                <div style="margin-bottom:10px;padding:8px;border-bottom:1px solid #ddd;">
+                    <b>推荐${i + 1}：</b> (${row}, ${col})<br/>
+                    ${r.reason}
+                </div>
+                `;
+            }).join('');
+
+        } else {
+            qaResult.innerHTML = data.data || "无回答";
+        }
+
+    } catch (e) {
+        console.error(e);
+        qaResult.innerHTML = "AI推荐失败";
+    }
+});
 
 async function askReview() {
     setBusyState(true);
@@ -320,7 +394,7 @@ async function askReview() {
             let message = `review failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 

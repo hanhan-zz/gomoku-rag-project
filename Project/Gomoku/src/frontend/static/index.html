@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -56,7 +57,7 @@
             background: white;
             border-radius: 12px;
             padding: 16px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         }
 
         #gameCanvas {
@@ -90,11 +91,88 @@
             gap: 16px;
         }
 
+        /* ===== Move QA Panel ===== */
+        .qa-panel {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .qa-header {
+            background: #e6f0eb;
+            padding: 12px 16px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .qa-header h3 {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 600;
+        }
+
+        .qa-header span {
+            font-weight: normal;
+            color: #555;
+        }
+
+        .qa-body {
+            padding: 16px;
+        }
+
+        .qa-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .qa-input-group input {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid #cbd5e1;
+            outline: none;
+            font-size: 20px;
+        }
+
+        .qa-input-group input:focus {
+            border-color: #3b82f6;
+        }
+
+        .qa-input-group button {
+            background: linear-gradient(135deg, #34d399, #10b981);
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .qa-input-group button:hover {
+            opacity: 0.9;
+        }
+
+        .qa-result {
+            background: #e9f1f8;
+            color: #1f2937;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 20px;
+            line-height: 1.6;
+        }
+
+        /* ===== 占位状态（灰色）===== */
+        .qa-result.placeholder {
+            color: #9ca3af;
+            margin: 0 0 0 0;
+        }
+
         .panel {
             background: white;
             border-radius: 12px;
             padding: 16px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             min-height: 120px;
         }
 
@@ -104,13 +182,11 @@
 
         ul {
             padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 6px;
+            margin: 10px 0;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Gomoku with Explain & Review</h1>
@@ -137,6 +213,28 @@
                     <p>Click “Why did AI move here?” after the AI makes a move.</p>
                 </div>
 
+                <div class="qa-panel">
+                    <div class="qa-header">
+                        <h3>Move QA</h3>
+                    </div>
+
+                    <div class="qa-body">
+                        <div class="qa-input-group">
+                            <input id="qaInput" placeholder="例如：帮我分析下一步棋怎么走" />
+                            <button id="qaBtn">Ask</button>
+                        </div>
+
+                        <div id="qaResult" class="qa-result placeholder">
+                            <ul>
+                                <li>什么是活三？</li>
+                                <li>Top3候选点</li>
+                                <li>落子后的变化</li>
+                                <li>选择该点的原因</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="reviewPanel" class="panel">
                     <h3>Post-game Review</h3>
                     <p>Click “Post-game Review” to generate a summary of the current game.</p>
@@ -145,6 +243,7 @@
         </div>
     </div>
 
-    <script src="/static/game.js"></script>
+    <script src="./game.js"></script>
 </body>
+
 </html>

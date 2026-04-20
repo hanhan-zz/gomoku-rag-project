@@ -3,7 +3,7 @@ import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union, List
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -102,6 +102,34 @@ class WhyResponse(BaseModel):
     alternatives: list[str] = []
 
 
+class QARequest(BaseModel):
+    step_id: Optional[int] = None
+    board: list[list[int]]
+    question: str
+
+
+class MoveItem(BaseModel):
+    move: List[int]
+    reason: str
+
+
+class MovesData(BaseModel):
+    top3: List[MoveItem]
+
+
+class MovesResponse(BaseModel):
+    type: str  # "moves"
+    data: MovesData
+
+
+class TextResponse(BaseModel):
+    type: str  # "text"
+    data: str
+
+
+QAResponse = Union[MovesResponse, TextResponse]
+
+
 class ReviewRequest(BaseModel):
     pass
 
@@ -154,13 +182,15 @@ def _safe_json_loads(content: str) -> Optional[dict]:
         start = content.find("{")
         end = content.rfind("}")
         if start != -1 and end != -1 and end > start:
-            return json.loads(content[start:end + 1])
+            return json.loads(content[start : end + 1])
     except Exception:
         pass
     return None
 
 
-def llm_explain_move(question: str, step_context: dict, retrieved_chunks: list[dict]) -> dict:
+def llm_explain_move(
+    question: str, step_context: dict, retrieved_chunks: list[dict]
+) -> dict:
     client = get_llm_client()
     if client.client is None:
         client.connect()
@@ -196,7 +226,8 @@ Return JSON only:
         return parsed
 
     return {
-        "explanation": step_context.get("reasoning") or "AI chose this move based on the current board situation.",
+        "explanation": step_context.get("reasoning")
+        or "AI chose this move based on the current board situation.",
         "evidence": [c["text"] for c in retrieved_chunks[:2]],
         "alternatives": [],
     }
@@ -240,7 +271,9 @@ Return JSON only:
         "summary": "This game can be improved by paying more attention to forced threats.",
         "turning_points": review_context.get("candidate_turning_points", [])[:2],
         "mistakes": ["A possible threat was not answered early enough."],
-        "suggestions": ["Prioritize blocking immediate threats before expanding attack."],
+        "suggestions": [
+            "Prioritize blocking immediate threats before expanding attack."
+        ],
         "evidence": [c["text"] for c in retrieved_chunks[:2]],
     }
 
@@ -316,7 +349,11 @@ def _minimax_ai(board: list[list[int]], player: int) -> tuple[int, int, str]:
                 for dy in range(-2, 3):
                     for dx in range(-2, 3):
                         nx, ny = x + dx, y + dy
-                        if 0 <= nx < BOARD_SIZE and 0 <= ny < BOARD_SIZE and board[ny][nx] == EMPTY:
+                        if (
+                            0 <= nx < BOARD_SIZE
+                            and 0 <= ny < BOARD_SIZE
+                            and board[ny][nx] == EMPTY
+                        ):
                             candidates.add((nx, ny))
 
     if not candidates:
@@ -342,6 +379,62 @@ def _minimax_ai(board: list[list[int]], player: int) -> tuple[int, int, str]:
         reasoning = f"Move ({x}, {y}) is chosen by heuristic evaluation."
 
     return x, y, reasoning
+
+
+# 用llm来分类question，目前是分为两种（普通QA和询问下一步该下哪里的top3落子点）
+def is_what_question(question: str):
+    client = get_llm_client()
+    if client.client is None:
+        client.connect()
+
+    prompt = f"""
+你是一个五子棋问题分类器。
+
+请判断用户问题属于以下四种类型之一：
+
+1. moves
+   - 用户在问“下一步怎么走”
+   - 例如：下一步下哪里？帮我走一步
+
+2. explanation
+   - 用户在问“为什么对手走这一步”
+   - 例如：这一步为什么这么下？
+
+3. qa
+   - 用户在问五子棋知识（不依赖棋盘）
+   - 例如：什么是活三？冲四是什么意思？
+
+4. analysis
+   - 用户在请求对当前棋盘进行整体分析
+   - 例如：帮我分析一下局面
+
+------------------------
+【严格要求】
+------------------------
+
+- 只能从：moves / explanation / qa / analysis 中选择一个
+- 不允许返回其他词
+- 不允许解释原因
+- 必须返回JSON格式
+
+用户问题：
+{question}
+
+只返回一个JSON：
+
+{{ "type": "moves" }}
+"""
+
+    response = client.client.chat.completions.create(
+        model=client.model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    content = response.choices[0].message.content.strip()
+    data = json.loads(content)
+    print("LLM INTENT OUTPUT:", data)
+
+    return data
 
 
 @app.get("/")
@@ -389,7 +482,11 @@ async def play_turn(request: PlayTurnRequest):
     if game.game_over:
         return PlayTurnResponse(
             board=game.board,
-            human_move={"x": request.x, "y": request.y, "step_id": human_record.step_id},
+            human_move={
+                "x": request.x,
+                "y": request.y,
+                "step_id": human_record.step_id,
+            },
             ai_move=None,
             reasoning=None,
             winner=winner_to_text(game.winner),
@@ -446,7 +543,8 @@ async def why_move(request: WhyRequest):
         )
     except Exception:
         result = {
-            "explanation": step_context.get("reasoning") or "AI chose this move based on the current board situation.",
+            "explanation": step_context.get("reasoning")
+            or "AI chose this move based on the current board situation.",
             "evidence": [c["text"] for c in chunks[:2]],
             "alternatives": [],
         }
@@ -468,7 +566,9 @@ async def review_game(_: ReviewRequest):
     review_context["winner"] = winner_to_text(game.winner)
     review_context["game_over"] = game.game_over
 
-    chunks = retriever.retrieve("review mistakes turning points defense threat", top_k=4)
+    chunks = retriever.retrieve(
+        "review mistakes turning points defense threat", top_k=4
+    )
 
     try:
         result = llm_review_game(
@@ -480,12 +580,16 @@ async def review_game(_: ReviewRequest):
             "summary": "This game can be improved by paying more attention to forced threats.",
             "turning_points": review_context.get("candidate_turning_points", [])[:2],
             "mistakes": ["A possible threat was not answered early enough."],
-            "suggestions": ["Prioritize blocking immediate threats before expanding attack."],
+            "suggestions": [
+                "Prioritize blocking immediate threats before expanding attack."
+            ],
             "evidence": [c["text"] for c in chunks[:2]],
         }
 
     if "turning_points" not in result:
-        result["turning_points"] = review_context.get("candidate_turning_points", [])[:2]
+        result["turning_points"] = review_context.get("candidate_turning_points", [])[
+            :2
+        ]
     if "mistakes" not in result:
         result["mistakes"] = []
     if "suggestions" not in result:
@@ -532,6 +636,47 @@ async def validate_move(request: ValidateRequest):
     return ValidateResponse(valid=True)
 
 
+@app.post("/api/qa", response_model=QAResponse)
+def qa(req: QARequest):
+
+    chunks = retriever.retrieve(req.question, top_k=3)
+    intent_type = is_what_question(req.question).get("type")
+
+    if intent_type == "moves":
+        result = get_llm_client().generate_move_top3(
+            question=req.question,
+            board=req.board,
+            current_player=1,
+            chunks=chunks,
+        )
+        return {"type": "moves", "data": result}
+
+    # 这边本来想复用 llm_explain_move（合并 why 按钮到 qa 功能），但是没有连学校vllm获取不到step_id无法测试，看情况要不要保留吧，也可以单独用那个按钮
+    # elif intent_type == "explanation":
+    #     if req.step_id is None:
+    #         return {"type": "text", "data": "需要 step_id 才能解释这一步"}
+
+    #     try:
+    #         step_context = current_session.history.build_explain_context(req.step_id)
+    #     except Exception as e:
+    #         return {"type": "text", "data": str(e)}
+
+    #     query = f"{req.question} {step_context.get('reasoning', '')}"
+    #     chunks = retriever.retrieve(query, top_k=3)
+
+    #     result = llm_explain_move(
+    #         question=req.question,
+    #         step_context=step_context,
+    #         retrieved_chunks=chunks,
+    #     )
+
+    #     return {"type": "qa", "data": result.get("explanation", "")}
+    else:
+        answer = get_llm_client().generate_qa_answer(req.question, chunks)
+        return {"type": "qa", "data": answer}
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8080)
