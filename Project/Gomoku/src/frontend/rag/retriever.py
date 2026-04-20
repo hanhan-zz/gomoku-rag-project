@@ -35,6 +35,42 @@ DEFAULT_KNOWLEDGE = [
         "topic": "endgame",
         "keywords": ["win", "winning", "forced"],
         "text": "When a forced winning line appears, prioritizing it is often stronger than positional expansion."
+    },
+    {
+        "id": "p1",
+        "topic": "personality",
+        "keywords": ["defensive", "careful", "stable", "conservative"],
+        "text": "Players who prioritize blocking and reducing risk often show a stable and defense-oriented playstyle."
+    },
+    {
+        "id": "p2",
+        "topic": "personality",
+        "keywords": ["aggressive", "attack", "pressure", "initiative"],
+        "text": "Players who consistently create threats and push initiative often have an aggressive attacking personality."
+    },
+    {
+        "id": "p3",
+        "topic": "personality",
+        "keywords": ["balanced", "rational", "flexible", "adapt"],
+        "text": "Players who shift between offense and defense according to the board tend to show a balanced and rational style."
+    },
+    {
+        "id": "p4",
+        "topic": "personality",
+        "keywords": ["risky", "impulsive", "overextend", "gamble"],
+        "text": "Ignoring direct threats for speculative attacks may indicate an impulsive or risk-seeking playstyle."
+    },
+    {
+        "id": "p5",
+        "topic": "personality",
+        "keywords": ["opportunistic", "mistake", "counterattack", "timing"],
+        "text": "Players who rely on punishing mistakes and seizing sudden chances often show an opportunistic personality."
+    },
+    {
+        "id": "p6",
+        "topic": "personality",
+        "keywords": ["growth", "learning", "improve", "adaptation"],
+        "text": "A player whose later moves become more stable after early mistakes may show a growth-oriented personality."
     }
 ]
 
@@ -58,14 +94,21 @@ class RAGRetriever:
 
         for chunk in self.chunks:
             score = 0
-
             topic = chunk.get("topic", "").lower()
+
             if topic and topic in q:
                 score += 2
 
             for kw in chunk.get("keywords", []):
-                if kw.lower() in q:
+                kw_lower = kw.lower()
+                if kw_lower in q:
                     score += 3
+
+            # 允许 text 的语义词也简单参与一点分数
+            text = chunk.get("text", "").lower()
+            for token in q.split():
+                if len(token) >= 4 and token in text:
+                    score += 1
 
             if score > 0:
                 scored.append((score, chunk))

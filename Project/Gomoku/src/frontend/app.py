@@ -147,6 +147,16 @@ class ValidateResponse(BaseModel):
     valid: bool
     reason: Optional[str] = None
 
+# 人格匹配
+class PersonalityResponse(BaseModel):
+    personality_type: str
+    title: str
+    description: str
+    strengths: list[str]
+    risks: list[str]
+    advice: list[str]
+    fun_comment: str
+
 
 # -----------------------------
 # Helpers
@@ -360,6 +370,20 @@ def _minimax_ai(board: list[list[int]], player: int) -> tuple[int, int, str]:
         reasoning = f"Move ({x}, {y}) is chosen by heuristic evaluation."
 
     return x, y, reasoning
+
+def build_personality_query(review_result: dict) -> str:
+    text_parts = []
+    text_parts.append(review_result.get("summary", ""))
+
+    for key in ["turning_points", "mistakes", "suggestions", "evidence"]:
+        values = review_result.get(key, [])
+        if isinstance(values, list):
+            text_parts.extend(values)
+
+    merged = " ".join(text_parts).lower()
+
+    # 给 personality topic 一个明确检索入口
+    return f"personality aggressive defensive balanced risky opportunistic growth {merged}"
 
 
 # -----------------------------
@@ -592,6 +616,30 @@ async def validate_move(request: ValidateRequest):
     if game.game_over:
         return ValidateResponse(valid=False, reason="Game is already over")
     return ValidateResponse(valid=True)
+
+@app.post("/api/personality-test", response_model=PersonalityResponse)
+async def personality_test():
+    if current_session.last_review_result is None:
+        raise HTTPException(status_code=400, detail="No review result available. Please generate review first.")
+
+    review_result = current_session.last_review_result
+    query = build_personality_query(review_result)
+    chunks = retriever.retrieve(query, top_k=4)
+
+    try:
+        result = get_llm_client().generate_personality_test(review_result, chunks)
+    except Exception:
+        result = {
+            "personality_type": "均衡理性型",
+            "title": "冷静布局者",
+            "description": "你在对局中倾向于根据局势调整策略，既不会一味冒进，也不会过度保守。",
+            "strengths": ["局面理解较稳定", "攻防切换较自然"],
+            "risks": ["关键时刻可能略显犹豫", "优势扩大速度不够快"],
+            "advice": ["面对直接威胁时更果断", "优势局面下尝试主动施压"],
+            "fun_comment": "你像一位讲究节奏的棋局规划师。"
+        }
+
+    return PersonalityResponse(**result)
 
 
 if __name__ == "__main__":

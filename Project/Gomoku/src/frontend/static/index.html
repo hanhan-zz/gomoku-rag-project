@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="page-shell">
         <div class="container">
@@ -70,7 +72,12 @@
                         <div class="panel-body">
                             <div class="review-actions">
                                 <button id="reviewBtn" class="btn btn-primary" disabled>Generate Review</button>
-                                <button id="downloadBtn" class="btn btn-secondary" disabled style="display: none;">Download Report</button>
+                                <button id="personalityBtn" class="btn btn-personality" disabled style="display: none;">
+                                    Personality Test
+                                </button>
+                                <button id="downloadBtn" class="btn btn-secondary" disabled style="display: none;">
+                                    Download Report
+                                </button>
                             </div>
 
                             <div id="reviewHint" class="review-hint">
@@ -99,6 +106,24 @@
                                     <li>改进建议</li>
                                 </ul>
                             </div>
+
+                            <div id="personalityLoading" class="review-loading" style="display: none;">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-text">
+                                    <strong>正在生成人格测试...</strong>
+                                    <span>正在根据复盘结果分析你的棋风画像，请稍候</span>
+                                </div>
+                            </div>
+
+                            <div id="personalityPanel" class="result-box personality-box" style="display: none;">
+                                <p class="placeholder-text">人格测试结果将显示在这里...</p>
+                                <ul>
+                                    <li>人格类型</li>
+                                    <li>风格称号</li>
+                                    <li>优势与风险</li>
+                                    <li>趣味点评</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -112,4 +137,5 @@
 
     <script src="/static/game.js"></script>
 </body>
+
 </html>

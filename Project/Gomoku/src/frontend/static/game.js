@@ -45,6 +45,9 @@ const newGameBtn = document.getElementById('newGameBtn');
 const whyBtn = document.getElementById('whyBtn');
 const reviewBtn = document.getElementById('reviewBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const personalityBtn = document.getElementById('personalityBtn');
+const personalityPanel = document.getElementById('personalityPanel');
+const personalityLoading = document.getElementById('personalityLoading');
 
 const explainPanel = document.getElementById('explainPanel');
 const reviewPanel = document.getElementById('reviewPanel');
@@ -75,14 +78,16 @@ function setBusyState(busy) {
     if (newGameBtn) newGameBtn.disabled = busy;
     if (whyBtn) whyBtn.disabled = busy || !lastAiStepId;
 
-    // 要求 1：游戏过程中无法点击 Generate Review
     if (reviewBtn) {
         reviewBtn.disabled = busy || !gameOver;
     }
 
-    // 要求 2：报告生成之前无法点击 Download Report
     if (downloadBtn) {
         downloadBtn.disabled = busy || !latestReviewData;
+    }
+
+    if (personalityBtn) {
+        personalityBtn.disabled = busy || !latestReviewData;
     }
 }
 
@@ -97,6 +102,10 @@ function updateButtons() {
 
     if (downloadBtn) {
         downloadBtn.disabled = isSubmitting || !latestReviewData;
+    }
+
+    if (personalityBtn) {
+        personalityBtn.disabled = isSubmitting || !latestReviewData;
     }
 }
 
@@ -126,6 +135,20 @@ function clearPanels() {
         `;
     }
 
+    if (personalityPanel) {
+        personalityPanel.style.display = 'none';
+        personalityPanel.innerHTML = `
+            <p class="placeholder-text">人格测试结果将显示在这里...</p>
+            <ul>
+                <li>人格类型</li>
+                <li>风格称号</li>
+                <li>优势与风险</li>
+                <li>趣味点评</li>
+            </ul>
+        `;
+    }
+
+    if (personalityLoading) personalityLoading.style.display = 'none';
     if (reviewLoading) reviewLoading.style.display = 'none';
     if (reviewHint) reviewHint.style.display = 'block';
 
@@ -136,6 +159,11 @@ function clearPanels() {
     if (downloadBtn) {
         downloadBtn.style.display = 'none';
         downloadBtn.disabled = true;
+    }
+
+    if (personalityBtn) {
+        personalityBtn.style.display = 'none';
+        personalityBtn.disabled = true;
     }
 
     if (winRateChart) {
@@ -271,6 +299,46 @@ function renderReview(data) {
     `;
 }
 
+function renderPersonality(data) {
+    if (!personalityPanel) return;
+
+    const personalityType = data?.personality_type || '';
+    const title = data?.title || '';
+    const description = data?.description || '';
+    const strengths = Array.isArray(data?.strengths) ? data.strengths : [];
+    const risks = Array.isArray(data?.risks) ? data.risks : [];
+    const advice = Array.isArray(data?.advice) ? data.advice : [];
+    const funComment = data?.fun_comment || '';
+
+    personalityPanel.style.display = 'block';
+    personalityPanel.innerHTML = `
+        <h3>Gomoku Personality Test</h3>
+        <div class="personality-tag">${escapeHtml(personalityType)}</div>
+
+        <p><strong>称号：</strong>${escapeHtml(title)}</p>
+        <p><strong>画像描述：</strong>${escapeHtml(description)}</p>
+
+        <div class="personality-section">
+            <strong>你的优势</strong>
+            <ul>${strengths.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        </div>
+
+        <div class="personality-section">
+            <strong>潜在风险</strong>
+            <ul>${risks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        </div>
+
+        <div class="personality-section">
+            <strong>成长建议</strong>
+            <ul>${advice.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        </div>
+
+        <div class="personality-fun">
+            ${escapeHtml(funComment)}
+        </div>
+    `;
+}
+
 function renderWinRateChart(series) {
     if (!winRateContainer || !winRateCanvas) return;
 
@@ -347,7 +415,7 @@ function renderWinRateChart(series) {
                 },
                 tooltip: {
                     callbacks: {
-                        afterLabel: function(context) {
+                        afterLabel: function (context) {
                             const point = series[context.dataIndex];
                             const side = point.player === 'ai' ? 'White (AI)' : 'Black (Human)';
                             return `Move by: ${side}`;
@@ -471,7 +539,7 @@ async function playTurn(x, y) {
             let message = `play-turn failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 
@@ -526,7 +594,7 @@ async function askWhy() {
             let message = `why failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 
@@ -579,7 +647,7 @@ async function askReview() {
             let message = `review failed: ${response.status}`;
             try {
                 message = await response.text();
-            } catch (e) {}
+            } catch (e) { }
             throw new Error(message);
         }
 
@@ -600,6 +668,11 @@ async function askReview() {
             downloadBtn.disabled = false;
         }
 
+        if (personalityBtn) {
+            personalityBtn.style.display = 'inline-block';
+            personalityBtn.disabled = false;
+        }
+
         updateStatus();
     } catch (err) {
         console.error(err);
@@ -616,6 +689,57 @@ async function askReview() {
         }
     } finally {
         if (reviewLoading) reviewLoading.style.display = 'none';
+        setBusyState(false);
+        updateButtons();
+    }
+}
+
+async function askPersonality() {
+    if (!latestReviewData) {
+        setStatus('Generate review first', 'ai-turn');
+        return;
+    }
+
+    setBusyState(true);
+    setStatus('Generating personality test...', 'ai-turn');
+
+    if (personalityLoading) personalityLoading.style.display = 'flex';
+    if (personalityPanel) personalityPanel.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/personality-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        if (!response.ok) {
+            let message = `personality-test failed: ${response.status}`;
+            try {
+                message = await response.text();
+            } catch (e) {}
+            throw new Error(message);
+        }
+
+        const data = await response.json();
+        renderPersonality(data);
+        updateStatus();
+    } catch (err) {
+        console.error(err);
+        setStatus('Personality test failed', 'game-over');
+
+        if (personalityPanel) {
+            personalityPanel.style.display = 'block';
+            personalityPanel.innerHTML = `
+                <p class="placeholder-text">人格测试生成失败</p>
+                <ul>
+                    <li>请确认后端 /api/personality-test 已实现</li>
+                    <li>请先生成复盘结果后再测试</li>
+                </ul>
+            `;
+        }
+    } finally {
+        if (personalityLoading) personalityLoading.style.display = 'none';
         setBusyState(false);
         updateButtons();
     }
@@ -668,6 +792,12 @@ if (reviewBtn) {
 if (downloadBtn) {
     downloadBtn.addEventListener('click', () => {
         downloadReport();
+    });
+}
+
+if (personalityBtn) {
+    personalityBtn.addEventListener('click', async () => {
+        await askPersonality();
     });
 }
 
