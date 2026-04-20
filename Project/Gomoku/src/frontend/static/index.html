@@ -3,143 +3,81 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gomoku with Explain & Review</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            color: #222;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        h1 {
-            margin-top: 0;
-            margin-bottom: 16px;
-        }
-
-        .topbar {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
-
-        button {
-            padding: 10px 14px;
-            border: none;
-            border-radius: 8px;
-            background: #2563eb;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-
-        .layout {
-            display: flex;
-            gap: 24px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-        }
-
-        .board-section {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        }
-
-        #gameCanvas {
-            display: block;
-            background: #deb887;
-            border-radius: 8px;
-        }
-
-        .info {
-            margin-top: 12px;
-        }
-
-        #status {
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        #reasoning {
-            background: #f8fafc;
-            border-left: 4px solid #2563eb;
-            padding: 10px;
-            border-radius: 6px;
-            min-height: 20px;
-        }
-
-        .side-panels {
-            flex: 1;
-            min-width: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .panel {
-            background: white;
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            min-height: 120px;
-        }
-
-        .panel h3 {
-            margin-top: 0;
-        }
-
-        ul {
-            padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 6px;
-        }
-    </style>
+    <title>Gomoku - Human vs AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Gomoku with Explain & Review</h1>
-
-        <div class="topbar">
-            <button id="newGameBtn">New Game</button>
-            <button id="whyBtn">Why did AI move here?</button>
-            <button id="reviewBtn">Post-game Review</button>
-        </div>
+        <header>
+            <h1>Gomoku - Human vs AI</h1>
+            <p class="subtitle">五子棋 - 你执黑棋先行</p>
+            <div class="status-container">
+                <div id="status" class="status your-turn">你的回合</div>
+            </div>
+            <div class="score-panel">
+                <span class="player-score"><span class="piece black"></span> 你 (黑)</span>
+                <span class="vs">VS</span>
+                <span class="player-score"><span class="piece white"></span> AI (白)</span>
+            </div>
+        </header>
 
         <div class="layout">
             <div class="board-section">
                 <canvas id="gameCanvas" width="600" height="600"></canvas>
-
-                <div class="info">
-                    <div id="status">Loading...</div>
-                    <div id="reasoning"></div>
+                <div class="board-controls">
+                    <button id="newGameBtn" class="btn btn-primary">新游戏</button>
+                    <button id="undoBtn" class="btn btn-secondary">悔棋</button>
                 </div>
             </div>
 
             <div class="side-panels">
-                <div id="explainPanel" class="panel">
-                    <h3>AI Move Explanation</h3>
-                    <p>Click “Why did AI move here?” after the AI makes a move.</p>
+                <div class="panel qa-panel">
+                    <div class="panel-header qa-header">
+                        <h3>Move QA (落子问答)</h3>
+                    </div>
+                    <div class="panel-body">
+                        <p>询问某一步为什么这样下：</p>
+                        <div class="input-group">
+                            <input type="text" id="whyInput" placeholder="例如：为什么AI下在这里？">
+                            <button id="whyBtn" class="btn btn-ask">Ask</button>
+                        </div>
+                        <div id="explainPanel" class="result-box">
+                            <p class="placeholder-text">回答将显示在这里...</p>
+                            <ul>
+                                <li>落子原因</li>
+                                <li>可选替代点</li>
+                                <li>相关策略依据</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="reviewPanel" class="panel">
-                    <h3>Post-game Review</h3>
-                    <p>Click “Post-game Review” to generate a summary of the current game.</p>
+                <div class="panel review-panel">
+                    <div class="panel-header review-header">
+                        <h3>Post-game Review (棋局复盘)</h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="review-actions">
+                            <button id="reviewBtn" class="btn btn-primary">Generate Review</button>
+                            <button id="downloadBtn" class="btn btn-secondary" style="display: none;">Download Report</button>
+                        </div>
+                        
+                        <!-- Win Rate Chart Container -->
+                        <div id="winRateContainer" style="display: none; margin-top: 15px;">
+                            <canvas id="winRateChart"></canvas>
+                        </div>
+
+                        <div id="reviewPanel" class="result-box">
+                            <p class="placeholder-text">复盘结果将显示在这里...</p>
+                            <ul>
+                                <li>本局总结</li>
+                                <li>关键转折点</li>
+                                <li>失误分析</li>
+                                <li>改进建议</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

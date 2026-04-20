@@ -3,11 +3,11 @@ import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -15,6 +15,8 @@ from game import GomokuGame, BLACK, WHITE, EMPTY, BOARD_SIZE
 from llm_client import LLMClient
 from history import HistoryRecorder
 from rag.retriever import RAGRetriever
+from review_analyzer import ReviewAnalyzer
+from report_exporter import ReportExporter
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,10 +42,12 @@ app.add_middleware(
 class CurrentSessionStore:
     game: GomokuGame
     history: HistoryRecorder
+    last_review_result: Optional[dict] = None
 
     def reset(self) -> None:
         self.game = GomokuGame()
         self.history = HistoryRecorder()
+        self.last_review_result = None
 
 
 current_session = CurrentSessionStore(
@@ -52,6 +56,8 @@ current_session = CurrentSessionStore(
 )
 
 retriever = RAGRetriever(KNOWLEDGE_PATH)
+review_analyzer = ReviewAnalyzer()
+report_exporter = ReportExporter()
 
 _llm_client: Optional[LLMClient] = None
 
@@ -67,6 +73,9 @@ def get_llm_client() -> LLMClient:
     return _llm_client
 
 
+# -----------------------------
+# Pydantic Models
+# -----------------------------
 class HealthResponse(BaseModel):
     status: str
 
@@ -112,6 +121,9 @@ class ReviewResponse(BaseModel):
     mistakes: list[str]
     suggestions: list[str]
     evidence: list[str]
+    winrate_series: list[dict]
+    winner: Optional[str] = None
+    total_steps: int = 0
 
 
 class MoveRequest(BaseModel):
@@ -136,6 +148,9 @@ class ValidateResponse(BaseModel):
     reason: Optional[str] = None
 
 
+# -----------------------------
+# Helpers
+# -----------------------------
 def winner_to_text(winner: Optional[int]) -> Optional[str]:
     if winner == BLACK:
         return "human"
@@ -202,7 +217,7 @@ Return JSON only:
     }
 
 
-def llm_review_game(review_context: dict, retrieved_chunks: list[dict]) -> dict:
+def llm_review_game(review_context: dict, key_moments: list[dict], retrieved_chunks: list[dict]) -> dict:
     client = get_llm_client()
     if client.client is None:
         client.connect()
@@ -212,6 +227,9 @@ You are a Gomoku review assistant.
 
 Game review context:
 {json.dumps(review_context, ensure_ascii=False)}
+
+Key moments:
+{json.dumps(key_moments, ensure_ascii=False)}
 
 Retrieved strategy evidence:
 {json.dumps(retrieved_chunks, ensure_ascii=False)}
@@ -230,7 +248,7 @@ Return JSON only:
         model=client.model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
-        max_tokens=500,
+        max_tokens=700,
     )
     parsed = _safe_json_loads(response.choices[0].message.content)
     if parsed:
@@ -238,7 +256,7 @@ Return JSON only:
 
     return {
         "summary": "This game can be improved by paying more attention to forced threats.",
-        "turning_points": review_context.get("candidate_turning_points", [])[:2],
+        "turning_points": [f"Step {m['step_id']}: {m['player']} move delta {m['delta']}" for m in key_moments[:3]],
         "mistakes": ["A possible threat was not answered early enough."],
         "suggestions": ["Prioritize blocking immediate threats before expanding attack."],
         "evidence": [c["text"] for c in retrieved_chunks[:2]],
@@ -344,6 +362,9 @@ def _minimax_ai(board: list[list[int]], player: int) -> tuple[int, int, str]:
     return x, y, reasoning
 
 
+# -----------------------------
+# Routes
+# -----------------------------
 @app.get("/")
 async def root():
     if (STATIC_DIR / "index.html").exists():
@@ -377,16 +398,22 @@ async def play_turn(request: PlayTurnRequest):
     if not game.is_valid_move(request.x, request.y):
         raise HTTPException(status_code=400, detail="invalid human move")
 
+    board_before_human = copy.deepcopy(game.board)
     game.make_move(request.x, request.y)
+
+    human_eval_score = review_analyzer.evaluate_board_for_ai(game.board)
     human_record = history.record_move(
         player="human",
         x=request.x,
         y=request.y,
-        board_snapshot=game.board,
+        board_before=board_before_human,
+        board_after=game.board,
         reasoning=None,
+        eval_score=human_eval_score,
     )
 
     if game.game_over:
+        current_session.last_review_result = None
         return PlayTurnResponse(
             board=game.board,
             human_move={"x": request.x, "y": request.y, "step_id": human_record.step_id},
@@ -407,14 +434,21 @@ async def play_turn(request: PlayTurnRequest):
     if not game.is_valid_move(ai_x, ai_y):
         ai_x, ai_y, ai_reasoning = _minimax_ai(game.board, WHITE)
 
+    board_before_ai = copy.deepcopy(game.board)
     game.make_move(ai_x, ai_y)
+
+    ai_eval_score = review_analyzer.evaluate_board_for_ai(game.board)
     ai_record = history.record_move(
         player="ai",
         x=ai_x,
         y=ai_y,
-        board_snapshot=game.board,
+        board_before=board_before_ai,
+        board_after=game.board,
         reasoning=ai_reasoning,
+        eval_score=ai_eval_score,
     )
+
+    current_session.last_review_result = None
 
     return PlayTurnResponse(
         board=game.board,
@@ -464,28 +498,35 @@ async def review_game(_: ReviewRequest):
     game = current_session.game
     history = current_session.history
 
+    if not history.records:
+        raise HTTPException(status_code=400, detail="No moves yet")
+
     review_context = history.build_review_context()
     review_context["winner"] = winner_to_text(game.winner)
     review_context["game_over"] = game.game_over
+
+    key_moments = review_analyzer.extract_key_moments(history.records)
+    winrate_series = review_analyzer.build_winrate_series(history.records)
 
     chunks = retriever.retrieve("review mistakes turning points defense threat", top_k=4)
 
     try:
         result = llm_review_game(
             review_context=review_context,
+            key_moments=key_moments,
             retrieved_chunks=chunks,
         )
     except Exception:
         result = {
             "summary": "This game can be improved by paying more attention to forced threats.",
-            "turning_points": review_context.get("candidate_turning_points", [])[:2],
+            "turning_points": [f"Step {m['step_id']}: {m['player']} move delta {m['delta']}" for m in key_moments[:3]],
             "mistakes": ["A possible threat was not answered early enough."],
             "suggestions": ["Prioritize blocking immediate threats before expanding attack."],
             "evidence": [c["text"] for c in chunks[:2]],
         }
 
     if "turning_points" not in result:
-        result["turning_points"] = review_context.get("candidate_turning_points", [])[:2]
+        result["turning_points"] = [f"Step {m['step_id']}: {m['player']} move delta {m['delta']}" for m in key_moments[:3]]
     if "mistakes" not in result:
         result["mistakes"] = []
     if "suggestions" not in result:
@@ -493,7 +534,28 @@ async def review_game(_: ReviewRequest):
     if "evidence" not in result:
         result["evidence"] = [c["text"] for c in chunks[:2]]
 
-    return ReviewResponse(**result)
+    review_result = {
+        **result,
+        "winrate_series": winrate_series,
+        "winner": winner_to_text(game.winner) or "Draw",
+        "total_steps": len(history.records),
+    }
+
+    current_session.last_review_result = review_result
+    return ReviewResponse(**review_result)
+
+
+@app.get("/api/download-report")
+async def download_report():
+    if current_session.last_review_result is None:
+        raise HTTPException(status_code=400, detail="No review result available. Please generate review first.")
+
+    report_md = report_exporter.build_markdown_report(current_session.last_review_result)
+
+    return PlainTextResponse(
+        report_md,
+        headers={"Content-Disposition": "attachment; filename=gomoku_review_report.md"}
+    )
 
 
 @app.get("/api/history")

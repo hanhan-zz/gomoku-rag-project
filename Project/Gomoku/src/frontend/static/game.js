@@ -5,15 +5,18 @@
 // - POST /api/why
 // - POST /api/review
 //
-// Expected HTML element IDs:
+// Optional HTML element IDs used by this version:
 // - gameCanvas
 // - status
 // - reasoning
 // - newGameBtn
 // - whyBtn
 // - reviewBtn
+// - downloadBtn
 // - explainPanel
 // - reviewPanel
+// - winRateContainer
+// - winRateChart
 
 const BOARD_SIZE = 15;
 const CELL_SIZE = 40;
@@ -28,6 +31,8 @@ let board = [];
 let gameOver = false;
 let lastAiStepId = null;
 let isSubmitting = false;
+let winRateChart = null;
+let latestReviewData = null;
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -37,8 +42,13 @@ const reasoningEl = document.getElementById('reasoning');
 const newGameBtn = document.getElementById('newGameBtn');
 const whyBtn = document.getElementById('whyBtn');
 const reviewBtn = document.getElementById('reviewBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+
 const explainPanel = document.getElementById('explainPanel');
 const reviewPanel = document.getElementById('reviewPanel');
+
+const winRateContainer = document.getElementById('winRateContainer');
+const winRateCanvas = document.getElementById('winRateChart');
 
 function createEmptyBoard() {
     return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
@@ -58,17 +68,40 @@ function setBusyState(busy) {
     if (newGameBtn) newGameBtn.disabled = busy;
     if (whyBtn) whyBtn.disabled = busy || !lastAiStepId;
     if (reviewBtn) reviewBtn.disabled = busy;
+    if (downloadBtn) downloadBtn.disabled = busy || !latestReviewData;
 }
 
 function updateButtons() {
     if (whyBtn) whyBtn.disabled = isSubmitting || !lastAiStepId;
     if (reviewBtn) reviewBtn.disabled = isSubmitting;
     if (newGameBtn) newGameBtn.disabled = isSubmitting;
+    if (downloadBtn) downloadBtn.disabled = isSubmitting || !latestReviewData;
 }
 
 function clearPanels() {
-    if (explainPanel) explainPanel.innerHTML = '';
-    if (reviewPanel) reviewPanel.innerHTML = '';
+    latestReviewData = null;
+
+    if (explainPanel) {
+        explainPanel.innerHTML = '';
+    }
+
+    if (reviewPanel) {
+        reviewPanel.innerHTML = '';
+    }
+
+    if (winRateContainer) {
+        winRateContainer.style.display = 'none';
+    }
+
+    if (downloadBtn) {
+        downloadBtn.style.display = 'none';
+        downloadBtn.disabled = true;
+    }
+
+    if (winRateChart) {
+        winRateChart.destroy();
+        winRateChart = null;
+    }
 }
 
 function updateStatus() {
@@ -144,6 +177,15 @@ function isWithinBoard(x, y) {
     return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
 }
 
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
 function renderExplain(data) {
     if (!explainPanel) return;
 
@@ -175,24 +217,170 @@ function renderReview(data) {
     reviewPanel.innerHTML = `
         <h3>Post-game Review</h3>
         <p><strong>Summary:</strong> ${escapeHtml(summary)}</p>
+
         <p><strong>Turning Points</strong></p>
         <ul>${turningPoints.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+
         <p><strong>Mistakes</strong></p>
         <ul>${mistakes.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+
         <p><strong>Suggestions</strong></p>
         <ul>${suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+
         <p><strong>Evidence</strong></p>
         <ul>${evidence.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     `;
 }
 
-function escapeHtml(text) {
-    return String(text)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+function renderWinRateChart(series) {
+    if (!winRateContainer || !winRateCanvas) return;
+
+    if (!Array.isArray(series) || series.length === 0) {
+        winRateContainer.style.display = 'none';
+        if (winRateChart) {
+            winRateChart.destroy();
+            winRateChart = null;
+        }
+        return;
+    }
+
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded. Cannot render win-rate chart.');
+        return;
+    }
+
+    winRateContainer.style.display = 'block';
+
+    const labels = series.map(item => `Step ${item.step}`);
+    const values = series.map(item => item.winrate_ai);
+    const pointColors = series.map(item => item.player === 'ai' ? '#ef6c00' : '#2b6cb0');
+
+    if (winRateChart) {
+        winRateChart.destroy();
+        winRateChart = null;
+    }
+
+    winRateChart = new Chart(winRateCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'AI Win Rate (%)',
+                data: values,
+                borderColor: '#ef6c00',
+                backgroundColor: 'rgba(239, 108, 0, 0.12)',
+                pointBackgroundColor: pointColors,
+                pointBorderColor: pointColors,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    min: 0,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'AI Win Rate (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Move Number'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const point = series[context.dataIndex];
+                            const side = point.player === 'ai' ? 'White (AI)' : 'Black (Human)';
+                            return `Move by: ${side}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function buildMarkdownReport(reviewData) {
+    const summary = reviewData?.summary || 'No summary';
+    const turningPoints = Array.isArray(reviewData?.turning_points) ? reviewData.turning_points : [];
+    const mistakes = Array.isArray(reviewData?.mistakes) ? reviewData.mistakes : [];
+    const suggestions = Array.isArray(reviewData?.suggestions) ? reviewData.suggestions : [];
+    const evidence = Array.isArray(reviewData?.evidence) ? reviewData.evidence : [];
+    const winrateSeries = Array.isArray(reviewData?.winrate_series) ? reviewData.winrate_series : [];
+    const winner = reviewData?.winner || 'unknown';
+    const totalSteps = reviewData?.total_steps || 0;
+
+    const bullet = (items) => {
+        if (!items.length) return '- None';
+        return items.map(item => `- ${item}`).join('\n');
+    };
+
+    const trendLines = winrateSeries.length
+        ? winrateSeries.map(item =>
+            `- Step ${item.step} (${item.player === 'human' ? 'Black/Human' : 'White/AI'}): AI win rate ${item.winrate_ai}%`
+        ).join('\n')
+        : '- No data';
+
+    return `# Gomoku Review Report
+
+Generated at: ${new Date().toLocaleString()}
+
+## Game Overview
+- Winner: ${winner}
+- Total steps: ${totalSteps}
+
+## Summary
+${summary}
+
+## Turning Points
+${bullet(turningPoints)}
+
+## Mistakes
+${bullet(mistakes)}
+
+## Suggestions
+${bullet(suggestions)}
+
+## Evidence
+${bullet(evidence)}
+
+## Win Rate Trend
+${trendLines}
+`;
+}
+
+function downloadTextFile(filename, content, mime = 'text/markdown;charset=utf-8') {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
 }
 
 async function initGame() {
@@ -325,7 +513,21 @@ async function askReview() {
         }
 
         const data = await response.json();
+
+        latestReviewData = {
+            ...data,
+            winner: data.winner || 'unknown',
+            total_steps: data.total_steps || 0
+        };
+
         renderReview(data);
+        renderWinRateChart(data.winrate_series || []);
+
+        if (downloadBtn) {
+            downloadBtn.style.display = 'inline-block';
+            downloadBtn.disabled = false;
+        }
+
         updateStatus();
     } catch (err) {
         console.error(err);
@@ -334,6 +536,16 @@ async function askReview() {
         setBusyState(false);
         updateButtons();
     }
+}
+
+function downloadReport() {
+    if (!latestReviewData) {
+        setStatus('Generate review first');
+        return;
+    }
+
+    const markdown = buildMarkdownReport(latestReviewData);
+    downloadTextFile('gomoku_review_report.md', markdown);
 }
 
 canvas.addEventListener('click', async (e) => {
@@ -367,6 +579,12 @@ if (whyBtn) {
 if (reviewBtn) {
     reviewBtn.addEventListener('click', async () => {
         await askReview();
+    });
+}
+
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+        downloadReport();
     });
 }
 

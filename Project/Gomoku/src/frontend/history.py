@@ -9,11 +9,13 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class MoveRecord:
     step_id: int
-    player: str
+    player: str  # "human" or "ai"
     x: int
     y: int
-    board_snapshot: List[List[int]]
+    board_before: List[List[int]]
+    board_after: List[List[int]]
     reasoning: Optional[str] = None
+    eval_score: Optional[float] = None
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
@@ -29,16 +31,20 @@ class HistoryRecorder:
         player: str,
         x: int,
         y: int,
-        board_snapshot: List[List[int]],
+        board_before: List[List[int]],
+        board_after: List[List[int]],
         reasoning: Optional[str] = None,
+        eval_score: Optional[float] = None,
     ) -> MoveRecord:
         record = MoveRecord(
             step_id=len(self.records) + 1,
             player=player,
             x=x,
             y=y,
-            board_snapshot=copy.deepcopy(board_snapshot),
+            board_before=copy.deepcopy(board_before),
+            board_after=copy.deepcopy(board_after),
             reasoning=reasoning,
+            eval_score=eval_score,
         )
         self.records.append(record)
         return record
@@ -51,6 +57,7 @@ class HistoryRecorder:
                 "x": r.x,
                 "y": r.y,
                 "reasoning": r.reasoning,
+                "eval_score": r.eval_score,
                 "timestamp": r.timestamp,
             }
             for r in self.records
@@ -71,6 +78,7 @@ class HistoryRecorder:
                 "x": r.x,
                 "y": r.y,
                 "reasoning": r.reasoning,
+                "eval_score": r.eval_score,
             }
             for r in recent
         ]
@@ -85,24 +93,15 @@ class HistoryRecorder:
             "player": step.player,
             "move": {"x": step.x, "y": step.y},
             "reasoning": step.reasoning,
+            "eval_score": step.eval_score,
             "recent_moves": self.get_recent_context(),
-            "board_snapshot": step.board_snapshot,
+            "board_before": step.board_before,
+            "board_after": step.board_after,
         }
 
     def build_review_context(self) -> Dict[str, Any]:
-        candidate_turning_points = []
-
-        for r in self.records:
-            if r.player == "ai" and r.reasoning:
-                text = r.reasoning.lower()
-                if "block" in text or "win" in text or "threat" in text:
-                    candidate_turning_points.append(
-                        f"Step {r.step_id}: AI moved at ({r.x}, {r.y}) - {r.reasoning}"
-                    )
-
         return {
             "total_steps": len(self.records),
             "history": self.get_history(),
             "recent_moves": self.get_recent_context(10),
-            "candidate_turning_points": candidate_turning_points[:5],
         }
