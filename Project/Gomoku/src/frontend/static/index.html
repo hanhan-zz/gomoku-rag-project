@@ -8,78 +8,105 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Gomoku - Human vs AI</h1>
-            <p class="subtitle">五子棋 - 你执黑棋先行</p>
-            <div class="status-container">
-                <div id="status" class="status your-turn">你的回合</div>
-            </div>
-            <div class="score-panel">
-                <span class="player-score"><span class="piece black"></span> 你 (黑)</span>
-                <span class="vs">VS</span>
-                <span class="player-score"><span class="piece white"></span> AI (白)</span>
-            </div>
-        </header>
+    <div class="page-shell">
+        <div class="container">
+            <header class="hero-header">
+                <h1>Gomoku - Human vs AI</h1>
+                <p class="subtitle">五子棋 - 你执黑棋先行</p>
 
-        <div class="layout">
-            <div class="board-section">
-                <canvas id="gameCanvas" width="600" height="600"></canvas>
-                <div class="board-controls">
-                    <button id="newGameBtn" class="btn btn-primary">新游戏</button>
-                    <button id="undoBtn" class="btn btn-secondary">悔棋</button>
+                <div class="status-container">
+                    <div id="status" class="status your-turn">你的回合</div>
                 </div>
-            </div>
 
-            <div class="side-panels">
-                <div class="panel qa-panel">
-                    <div class="panel-header qa-header">
-                        <h3>Move QA (落子问答)</h3>
+                <div class="score-panel">
+                    <span class="player-score"><span class="piece black"></span> 你 (黑)</span>
+                    <span class="vs">VS</span>
+                    <span class="player-score"><span class="piece white"></span> AI (白)</span>
+                </div>
+            </header>
+
+            <div class="layout">
+                <div class="board-section glass-card">
+                    <canvas id="gameCanvas" width="600" height="600"></canvas>
+
+                    <div class="board-controls">
+                        <button id="newGameBtn" class="btn btn-primary">新游戏</button>
+                        <button id="undoBtn" class="btn btn-secondary">悔棋</button>
                     </div>
-                    <div class="panel-body">
-                        <p>询问某一步为什么这样下：</p>
-                        <div class="input-group">
-                            <input type="text" id="whyInput" placeholder="例如：为什么AI下在这里？">
-                            <button id="whyBtn" class="btn btn-ask">Ask</button>
-                        </div>
-                        <div id="explainPanel" class="result-box">
-                            <p class="placeholder-text">回答将显示在这里...</p>
-                            <ul>
-                                <li>落子原因</li>
-                                <li>可选替代点</li>
-                                <li>相关策略依据</li>
-                            </ul>
-                        </div>
+
+                    <div class="reasoning-box">
+                        <div class="reasoning-title">AI 思考</div>
+                        <div id="reasoning" class="reasoning-text">等待 AI 落子...</div>
                     </div>
                 </div>
 
-                <div class="panel review-panel">
-                    <div class="panel-header review-header">
-                        <h3>Post-game Review (棋局复盘)</h3>
-                    </div>
-                    <div class="panel-body">
-                        <div class="review-actions">
-                            <button id="reviewBtn" class="btn btn-primary">Generate Review</button>
-                            <button id="downloadBtn" class="btn btn-secondary" style="display: none;">Download Report</button>
+                <div class="side-panels">
+                    <div class="panel qa-panel glass-card">
+                        <div class="panel-header qa-header">
+                            <h3>Move QA (落子问答)</h3>
                         </div>
-                        
-                        <!-- Win Rate Chart Container -->
-                        <div id="winRateContainer" style="display: none; margin-top: 15px;">
-                            <canvas id="winRateChart"></canvas>
-                        </div>
+                        <div class="panel-body">
+                            <p>询问某一步为什么这样下：</p>
+                            <div class="input-group">
+                                <input type="text" id="whyInput" placeholder="例如：为什么AI下在这里？">
+                                <button id="whyBtn" class="btn btn-ask">Ask</button>
+                            </div>
 
-                        <div id="reviewPanel" class="result-box">
-                            <p class="placeholder-text">复盘结果将显示在这里...</p>
-                            <ul>
-                                <li>本局总结</li>
-                                <li>关键转折点</li>
-                                <li>失误分析</li>
-                                <li>改进建议</li>
-                            </ul>
+                            <div id="explainPanel" class="result-box">
+                                <p class="placeholder-text">回答将显示在这里...</p>
+                                <ul>
+                                    <li>落子原因</li>
+                                    <li>可选替代点</li>
+                                    <li>相关策略依据</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel review-panel glass-card">
+                        <div class="panel-header review-header">
+                            <h3>Post-game Review (棋局复盘)</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="review-actions">
+                                <button id="reviewBtn" class="btn btn-primary" disabled>Generate Review</button>
+                                <button id="downloadBtn" class="btn btn-secondary" disabled style="display: none;">Download Report</button>
+                            </div>
+
+                            <div id="reviewHint" class="review-hint">
+                                对局结束后可生成复盘、绘制胜率图，并下载报告。
+                            </div>
+
+                            <div id="reviewLoading" class="review-loading" style="display: none;">
+                                <div class="loading-spinner"></div>
+                                <div class="loading-text">
+                                    <strong>正在生成复盘...</strong>
+                                    <span>正在分析关键步、失误点与胜率走势，请稍候</span>
+                                </div>
+                            </div>
+
+                            <div id="winRateContainer" class="winrate-card" style="display: none;">
+                                <div class="winrate-title">胜率分析</div>
+                                <canvas id="winRateChart"></canvas>
+                            </div>
+
+                            <div id="reviewPanel" class="result-box">
+                                <p class="placeholder-text">复盘结果将显示在这里...</p>
+                                <ul>
+                                    <li>本局总结</li>
+                                    <li>关键转折点</li>
+                                    <li>失误分析</li>
+                                    <li>改进建议</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="footer-note">
+            Gomoku Review UI · Move QA · Win Rate Analysis · Report Download
         </div>
     </div>
 

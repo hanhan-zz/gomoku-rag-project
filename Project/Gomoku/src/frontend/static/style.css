@@ -4,86 +4,118 @@
     box-sizing: border-box;
 }
 
+:root {
+    --bg-start: #f5f7fb;
+    --bg-end: #edf2f8;
+    --card: rgba(255, 255, 255, 0.92);
+    --border: rgba(226, 232, 240, 0.9);
+    --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+
+    --text-main: #1f2937;
+    --text-sub: #64748b;
+
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --secondary: #e2e8f0;
+    --secondary-hover: #cbd5e1;
+
+    --qa: #00c9a7;
+    --qa-hover: #00b093;
+
+    --status-green: #00c9a7;
+    --status-orange: #f59e0b;
+    --status-dark: #334155;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f0f2f5;
+    background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
     min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 40px 20px;
-    color: #333;
+    color: var(--text-main);
+    padding: 32px 18px;
+}
+
+.page-shell {
+    max-width: 1240px;
+    margin: 0 auto;
 }
 
 .container {
-    background: white;
-    border-radius: 12px;
-    padding: 40px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    max-width: 1100px;
-    width: 100%;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    padding: 36px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.7);
 }
 
-header {
+.glass-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.hero-header {
     text-align: center;
     margin-bottom: 30px;
 }
 
-header h1 {
-    color: #2c3e50;
-    font-size: 2.2rem;
+.hero-header h1 {
+    color: #1e293b;
+    font-size: 2.35rem;
     margin-bottom: 8px;
-    font-weight: 700;
+    font-weight: 800;
+    letter-spacing: -0.02em;
 }
 
 .subtitle {
-    color: #7f8c8d;
-    font-size: 1.1rem;
-    margin-bottom: 20px;
+    color: var(--text-sub);
+    font-size: 1.05rem;
+    margin-bottom: 18px;
 }
 
 .status-container {
-    margin-bottom: 15px;
+    margin-bottom: 16px;
 }
 
 .status {
     display: inline-block;
-    padding: 8px 24px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
+    padding: 10px 26px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.98rem;
+    color: white;
+    transition: all 0.25s ease;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .status.your-turn {
-    background-color: #00c9a7;
-    color: white;
+    background: linear-gradient(135deg, var(--status-green), #00b894);
 }
 
 .status.ai-turn {
-    background-color: #f39c12;
-    color: white;
+    background: linear-gradient(135deg, var(--status-orange), #f97316);
 }
 
 .status.game-over {
-    background-color: #34495e;
-    color: white;
+    background: linear-gradient(135deg, var(--status-dark), #0f172a);
 }
 
 .score-panel {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    margin-top: 15px;
-    font-size: 1.1rem;
-    font-weight: 500;
+    gap: 18px;
+    margin-top: 12px;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 .player-score {
     display: flex;
     align-items: center;
     gap: 8px;
+    color: #334155;
 }
 
 .piece {
@@ -99,66 +131,95 @@ header h1 {
 
 .piece.white {
     background: #fff;
-    border: 1px solid #ccc;
+    border: 1px solid #cbd5e1;
 }
 
 .vs {
-    color: #bdc3c7;
-    font-weight: 400;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .layout {
     display: flex;
-    gap: 30px;
-    margin-top: 20px;
+    gap: 28px;
+    margin-top: 22px;
+    align-items: flex-start;
 }
 
 .board-section {
     flex: 0 0 auto;
+    border-radius: 20px;
+    padding: 22px;
 }
 
 #gameCanvas {
     background: #eecfa1;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
     cursor: pointer;
+    display: block;
 }
 
 .board-controls {
     display: flex;
     justify-content: center;
-    gap: 20px;
-    margin-top: 20px;
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.reasoning-box {
+    margin-top: 18px;
+    background: #f8fbff;
+    border: 1px solid #e5edf6;
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+
+.reasoning-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.reasoning-text {
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.6;
+    min-height: 20px;
 }
 
 .side-panels {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 22px;
 }
 
 .panel {
-    border-radius: 12px;
+    border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-    background: #fff;
-    border: 1px solid #edf2f7;
 }
 
 .panel-header {
-    padding: 12px 20px;
-    font-size: 1.1rem;
+    padding: 14px 20px;
+    font-size: 1.08rem;
+    font-weight: 700;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.08rem;
 }
 
 .qa-header {
-    background-color: #e8f5e9;
-    color: #2e7d32;
+    background: linear-gradient(135deg, #e8fff8, #e8f5e9);
+    color: #15803d;
 }
 
 .review-header {
-    background-color: #fff3e0;
-    color: #ef6c00;
+    background: linear-gradient(135deg, #fff8ef, #fff3e0);
+    color: #ea580c;
 }
 
 .panel-body {
@@ -167,74 +228,91 @@ header h1 {
 
 .panel-body p {
     margin-bottom: 12px;
-    color: #555;
+    color: #475569;
+    line-height: 1.6;
 }
 
 .input-group {
     display: flex;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 
 .input-group input {
     flex: 1;
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    padding: 11px 14px;
+    border: 1px solid #dbe4ee;
+    border-radius: 10px;
     outline: none;
+    font-size: 0.96rem;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .input-group input:focus {
     border-color: #00c9a7;
+    box-shadow: 0 0 0 4px rgba(0, 201, 167, 0.1);
 }
 
 .btn {
-    padding: 10px 20px;
+    padding: 10px 18px;
     border: none;
-    border-radius: 6px;
+    border-radius: 10px;
     cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
 }
 
 .btn-primary {
-    background-color: #2563eb;
+    background: linear-gradient(135deg, var(--primary), #3b82f6);
     color: white;
 }
 
-.btn-primary:hover {
-    background-color: #1d4ed8;
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-hover), #2563eb);
 }
 
 .btn-secondary {
-    background-color: #e2e8f0;
+    background-color: var(--secondary);
     color: #475569;
 }
 
-.btn-secondary:hover {
-    background-color: #cbd5e1;
+.btn-secondary:hover:not(:disabled) {
+    background-color: var(--secondary-hover);
 }
 
 .btn-ask {
-    background-color: #00c9a7;
+    background: linear-gradient(135deg, var(--qa), #00b894);
     color: white;
 }
 
-.btn-ask:hover {
-    background-color: #00b093;
+.btn-ask:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--qa-hover), #009f85);
 }
 
 .result-box {
-    background-color: #f8fbff;
-    border-radius: 8px;
-    padding: 15px;
-    min-height: 100px;
+    background: #f8fbff;
+    border: 1px solid #ebf1f7;
+    border-radius: 14px;
+    padding: 16px;
+    min-height: 120px;
 }
 
 .placeholder-text {
     color: #2563eb;
     margin-bottom: 10px;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .result-box ul {
@@ -245,23 +323,107 @@ header h1 {
 
 .result-box li {
     margin-bottom: 8px;
+    line-height: 1.55;
 }
 
 .review-actions {
     display: flex;
     gap: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
 }
 
-#winRateContainer {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
+.review-hint {
+    margin-bottom: 14px;
+    color: #64748b;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    background: #fffaf2;
+    border: 1px dashed #fed7aa;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.review-loading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    border: 1px solid #dbeafe;
+    animation: pulseBg 1.8s ease-in-out infinite;
+}
+
+.loading-spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid #bfdbfe;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    flex-shrink: 0;
+}
+
+.loading-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.loading-text strong {
+    color: #1d4ed8;
+    font-size: 0.97rem;
+}
+
+.loading-text span {
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulseBg {
+    0% {
+        box-shadow: 0 0 0 rgba(37, 99, 235, 0.08);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.04);
+    }
+    100% {
+        box-shadow: 0 0 0 rgba(37, 99, 235, 0.08);
+    }
+}
+
+.winrate-card {
+    background: #fff;
+    padding: 16px;
+    border-radius: 14px;
     border: 1px solid #edf2f7;
-    margin-bottom: 15px;
-    height: 300px; /* Fixed height for chart visibility */
+    margin-bottom: 14px;
+    height: 300px;
     width: 100%;
     position: relative;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.winrate-title {
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 10px;
+}
+
+.footer-note {
+    text-align: center;
+    margin-top: 16px;
+    color: #94a3b8;
+    font-size: 0.88rem;
 }
 
 @media (max-width: 1000px) {
@@ -269,8 +431,39 @@ header h1 {
         flex-direction: column;
         align-items: center;
     }
+
     .side-panels {
         width: 100%;
-        max-width: 600px;
+        max-width: 640px;
+    }
+
+    .container {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 720px) {
+    body {
+        padding: 18px 10px;
+    }
+
+    .container {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .hero-header h1 {
+        font-size: 1.7rem;
+    }
+
+    .board-controls,
+    .input-group,
+    .review-actions {
+        flex-direction: column;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: auto;
     }
 }

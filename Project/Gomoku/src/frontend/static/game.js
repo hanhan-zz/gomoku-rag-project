@@ -5,7 +5,7 @@
 // - POST /api/why
 // - POST /api/review
 //
-// Optional HTML element IDs used by this version:
+// Expected HTML element IDs:
 // - gameCanvas
 // - status
 // - reasoning
@@ -15,6 +15,8 @@
 // - downloadBtn
 // - explainPanel
 // - reviewPanel
+// - reviewLoading
+// - reviewHint
 // - winRateContainer
 // - winRateChart
 
@@ -46,6 +48,8 @@ const downloadBtn = document.getElementById('downloadBtn');
 
 const explainPanel = document.getElementById('explainPanel');
 const reviewPanel = document.getElementById('reviewPanel');
+const reviewLoading = document.getElementById('reviewLoading');
+const reviewHint = document.getElementById('reviewHint');
 
 const winRateContainer = document.getElementById('winRateContainer');
 const winRateCanvas = document.getElementById('winRateChart');
@@ -54,8 +58,11 @@ function createEmptyBoard() {
     return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
 }
 
-function setStatus(text) {
-    if (statusEl) statusEl.textContent = text;
+function setStatus(text, type = '') {
+    if (!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.className = 'status';
+    if (type) statusEl.classList.add(type);
 }
 
 function setReasoning(text) {
@@ -67,27 +74,60 @@ function setBusyState(busy) {
 
     if (newGameBtn) newGameBtn.disabled = busy;
     if (whyBtn) whyBtn.disabled = busy || !lastAiStepId;
-    if (reviewBtn) reviewBtn.disabled = busy;
-    if (downloadBtn) downloadBtn.disabled = busy || !latestReviewData;
+
+    // 要求 1：游戏过程中无法点击 Generate Review
+    if (reviewBtn) {
+        reviewBtn.disabled = busy || !gameOver;
+    }
+
+    // 要求 2：报告生成之前无法点击 Download Report
+    if (downloadBtn) {
+        downloadBtn.disabled = busy || !latestReviewData;
+    }
 }
 
 function updateButtons() {
     if (whyBtn) whyBtn.disabled = isSubmitting || !lastAiStepId;
-    if (reviewBtn) reviewBtn.disabled = isSubmitting;
+
+    if (reviewBtn) {
+        reviewBtn.disabled = isSubmitting || !gameOver;
+    }
+
     if (newGameBtn) newGameBtn.disabled = isSubmitting;
-    if (downloadBtn) downloadBtn.disabled = isSubmitting || !latestReviewData;
+
+    if (downloadBtn) {
+        downloadBtn.disabled = isSubmitting || !latestReviewData;
+    }
 }
 
 function clearPanels() {
     latestReviewData = null;
 
     if (explainPanel) {
-        explainPanel.innerHTML = '';
+        explainPanel.innerHTML = `
+            <p class="placeholder-text">回答将显示在这里...</p>
+            <ul>
+                <li>落子原因</li>
+                <li>可选替代点</li>
+                <li>相关策略依据</li>
+            </ul>
+        `;
     }
 
     if (reviewPanel) {
-        reviewPanel.innerHTML = '';
+        reviewPanel.innerHTML = `
+            <p class="placeholder-text">复盘结果将显示在这里...</p>
+            <ul>
+                <li>本局总结</li>
+                <li>关键转折点</li>
+                <li>失误分析</li>
+                <li>改进建议</li>
+            </ul>
+        `;
     }
+
+    if (reviewLoading) reviewLoading.style.display = 'none';
+    if (reviewHint) reviewHint.style.display = 'block';
 
     if (winRateContainer) {
         winRateContainer.style.display = 'none';
@@ -105,13 +145,16 @@ function clearPanels() {
 }
 
 function updateStatus() {
-    if (gameOver) return;
-    setStatus('Your turn (Black)');
+    if (gameOver) {
+        setStatus('对局结束，可生成复盘', 'game-over');
+        return;
+    }
+    setStatus('你的回合', 'your-turn');
 }
 
 function drawBoard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#DEB887';
+    ctx.fillStyle = '#eecfa1';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.strokeStyle = '#333';
@@ -217,16 +260,12 @@ function renderReview(data) {
     reviewPanel.innerHTML = `
         <h3>Post-game Review</h3>
         <p><strong>Summary:</strong> ${escapeHtml(summary)}</p>
-
         <p><strong>Turning Points</strong></p>
         <ul>${turningPoints.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-
         <p><strong>Mistakes</strong></p>
         <ul>${mistakes.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-
         <p><strong>Suggestions</strong></p>
         <ul>${suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-
         <p><strong>Evidence</strong></p>
         <ul>${evidence.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     `;
@@ -402,7 +441,7 @@ async function initGame() {
         drawBoard();
     } catch (err) {
         console.error(err);
-        setStatus('Failed to start new game');
+        setStatus('Failed to start new game', 'game-over');
     } finally {
         setBusyState(false);
         updateButtons();
@@ -410,8 +449,16 @@ async function initGame() {
 }
 
 async function playTurn(x, y) {
+    if (!isWithinBoard(x, y) || board[y][x] !== EMPTY || gameOver || isSubmitting) {
+        return;
+    }
+
+    const previousBoard = board.map(row => [...row]);
+    board[y][x] = BLACK;
+    drawBoard();
+
     setBusyState(true);
-    setStatus('Submitting move...');
+    setStatus('Submitting move...', 'ai-turn');
 
     try {
         const response = await fetch('/api/play-turn', {
@@ -429,7 +476,7 @@ async function playTurn(x, y) {
         }
 
         const data = await response.json();
-        board = Array.isArray(data.board) ? data.board : board;
+        board = Array.isArray(data.board) ? data.board : previousBoard;
         gameOver = Boolean(data.game_over);
 
         if (data.ai_move && typeof data.ai_move.step_id === 'number') {
@@ -441,13 +488,15 @@ async function playTurn(x, y) {
 
         if (gameOver) {
             const winner = data.winner || 'unknown';
-            setStatus(`Game Over: ${winner} wins`);
+            setStatus(`Game Over: ${winner} wins`, 'game-over');
         } else {
             updateStatus();
         }
     } catch (err) {
         console.error(err);
-        setStatus('Move failed');
+        board = previousBoard;
+        drawBoard();
+        setStatus('Move failed', 'game-over');
     } finally {
         setBusyState(false);
         updateButtons();
@@ -456,12 +505,12 @@ async function playTurn(x, y) {
 
 async function askWhy() {
     if (!lastAiStepId) {
-        setStatus('No AI move to explain yet');
+        setStatus('No AI move to explain yet', 'ai-turn');
         return;
     }
 
     setBusyState(true);
-    setStatus('Generating explanation...');
+    setStatus('Generating explanation...', 'ai-turn');
 
     try {
         const response = await fetch('/api/why', {
@@ -486,7 +535,7 @@ async function askWhy() {
         updateStatus();
     } catch (err) {
         console.error(err);
-        setStatus('Explanation failed');
+        setStatus('Explanation failed', 'game-over');
     } finally {
         setBusyState(false);
         updateButtons();
@@ -494,8 +543,30 @@ async function askWhy() {
 }
 
 async function askReview() {
+    // 要求 1：游戏过程中不能点击 Generate Review
+    if (!gameOver) {
+        setStatus('Finish the game before generating review', 'ai-turn');
+        return;
+    }
+
     setBusyState(true);
-    setStatus('Generating review...');
+    setStatus('Generating review...', 'ai-turn');
+
+    // 要求 3：生成 review 时强化 loading 显示
+    if (reviewLoading) reviewLoading.style.display = 'flex';
+    if (reviewHint) reviewHint.style.display = 'none';
+
+    if (reviewPanel) {
+        reviewPanel.innerHTML = `
+            <p class="placeholder-text">正在生成复盘内容...</p>
+            <ul>
+                <li>分析关键转折点</li>
+                <li>识别失误与策略问题</li>
+                <li>生成改进建议</li>
+                <li>绘制胜率走势</li>
+            </ul>
+        `;
+    }
 
     try {
         const response = await fetch('/api/review', {
@@ -523,6 +594,7 @@ async function askReview() {
         renderReview(data);
         renderWinRateChart(data.winrate_series || []);
 
+        // 要求 2：只有生成完 review 后才能点下载
         if (downloadBtn) {
             downloadBtn.style.display = 'inline-block';
             downloadBtn.disabled = false;
@@ -531,8 +603,19 @@ async function askReview() {
         updateStatus();
     } catch (err) {
         console.error(err);
-        setStatus('Review failed');
+        setStatus('Review failed', 'game-over');
+
+        if (reviewPanel) {
+            reviewPanel.innerHTML = `
+                <p class="placeholder-text">复盘生成失败</p>
+                <ul>
+                    <li>请稍后重试</li>
+                    <li>检查后端 /api/review 是否正常</li>
+                </ul>
+            `;
+        }
     } finally {
+        if (reviewLoading) reviewLoading.style.display = 'none';
         setBusyState(false);
         updateButtons();
     }
@@ -540,7 +623,7 @@ async function askReview() {
 
 function downloadReport() {
     if (!latestReviewData) {
-        setStatus('Generate review first');
+        setStatus('Generate review first', 'ai-turn');
         return;
     }
 
