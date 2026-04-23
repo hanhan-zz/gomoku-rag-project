@@ -329,14 +329,13 @@ def _minimax_ai(board: list[list[int]], player: int) -> tuple[int, int, str]:
     x, y = random.choice(best_moves or [(7, 7)])
 
     if best_score >= 50000:
-        reasoning = f"Move ({x}, {y}) blocks a major threat or creates a winning line."
+        reasoning = f"在 ({x}, {y}) 落子可以阻止对手的强威胁，或直接形成制胜线路。"
     elif best_score >= 10000:
-        reasoning = f"Move ({x}, {y}) strengthens an immediate tactical sequence."
+        reasoning = f"在 ({x}, {y}) 落子可以加强当前的关键战术连续性。"
     elif best_score >= 1000:
-        reasoning = f"Move ({x}, {y}) improves local attack or defense."
+        reasoning = f"在 ({x}, {y}) 落子可以提升局部进攻或防守效率。"
     else:
-        reasoning = f"Move ({x}, {y}) is chosen by heuristic evaluation."
-
+        reasoning = f"综合局面评估后，选择在 ({x}, {y}) 落子。"
     return x, y, reasoning
 
 
@@ -560,11 +559,11 @@ async def why_move(request: WhyRequest):
         result = get_llm_client().generate_move_explanation(
             question=request.question,
             step_context=step_context,
-            retrieved_chunks=chunks,
+            chunks=chunks,
         )
     except Exception:
         result = {
-            "explanation": step_context.get("reasoning") or "AI chose this move based on the current board situation.",
+            "explanation": step_context.get("reasoning") or "AI 是根据当前棋形的攻防关系做出这一步选择的。",
             "evidence": _chunks_to_evidence(chunks, 2),
             "alternatives": [],
         }

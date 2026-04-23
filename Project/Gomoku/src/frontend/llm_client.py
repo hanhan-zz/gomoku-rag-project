@@ -216,18 +216,22 @@ def _build_human_review_defaults(review_payload: Dict[str, Any], compact_evidenc
 
 def _extract_heading_block(text: str, headings: List[str], next_headings: List[str]) -> str:
     for heading in headings:
-        pattern = re.escape(heading) + r"\s*[:：]?\s*(.*)"
-        m = re.search(pattern, text, flags=re.S)
+        pattern = rf"(?m)^\s*{re.escape(heading)}\s*$"
+        m = re.search(pattern, text)
         if not m:
             continue
-        start = m.start(1)
+
+        start = m.end()
         tail = text[start:]
         end_idx = len(tail)
+
         for nh in next_headings:
-            m2 = re.search(rf"\n\s*{re.escape(nh)}\s*[:：]?", tail)
+            m2 = re.search(rf"(?m)^\s*{re.escape(nh)}\s*$", tail)
             if m2:
                 end_idx = min(end_idx, m2.start())
+
         return tail[:end_idx].strip()
+
     return ""
 
 
@@ -254,63 +258,108 @@ def _extract_bullets(block: str, max_items: int = 4) -> List[str]:
     return out[:max_items]
 
 
+# def _parse_review_text_sections(raw_text: str, review_payload: Dict[str, Any], compact_evidence: List[str]) -> Dict[str, Any]:
+#     text = strip_code_fence(strip_think(raw_text))
+
+#     summary_block = _extract_heading_block(
+#         text,
+#         ["Summary", "总结"],
+#         ["Turning Points", "转折点", "关键点", "Mistakes", "问题", "Suggestions", "建议", "Evidence", "依据", "证据"],
+#     )
+#     turning_block = _extract_heading_block(
+#         text,
+#         ["Turning Points", "转折点", "关键点"],
+#         ["Mistakes", "问题", "Suggestions", "建议", "Evidence", "依据", "证据"],
+#     )
+#     mistakes_block = _extract_heading_block(
+#         text,
+#         ["Mistakes", "问题"],
+#         ["Suggestions", "建议", "Evidence", "依据", "证据"],
+#     )
+#     suggestions_block = _extract_heading_block(
+#         text,
+#         ["Suggestions", "建议"],
+#         ["Evidence", "依据", "证据"],
+#     )
+#     evidence_block = _extract_heading_block(
+#         text,
+#         ["Evidence", "依据", "证据"],
+#         [],
+#     )
+
+#     summary = ""
+#     if summary_block:
+#         summary = _clip_text(summary_block.splitlines()[0], 240)
+#     else:
+#         lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+#         for ln in lines:
+#             if len(ln) >= 8 and "总结" not in ln and "Turning Points" not in ln:
+#                 summary = _clip_text(ln, 240)
+#                 break
+
+#     turning_points = _extract_bullets(turning_block, max_items=3) if turning_block else []
+#     mistakes = _extract_bullets(mistakes_block, max_items=2) if mistakes_block else []
+#     suggestions = _extract_bullets(suggestions_block, max_items=3) if suggestions_block else []
+
+#     # Evidence stays sourced from retrieved chunks unless model explicitly gives section text
+#     evidence = _extract_bullets(evidence_block, max_items=3) if evidence_block else compact_evidence[:3]
+#     if not evidence:
+#         evidence = compact_evidence[:3]
+
+#     defaults = _build_human_review_defaults(review_payload, compact_evidence)
+#     if not summary:
+#         summary = defaults["summary"]
+#     if not turning_points:
+#         turning_points = defaults["turning_points"][:3]
+#     if not mistakes:
+#         mistakes = defaults["mistakes"][:2]
+#     if not suggestions:
+#         suggestions = defaults["suggestions"][:3]
+
+#     return {
+#         "summary": summary,
+#         "turning_points": turning_points[:3],
+#         "mistakes": mistakes[:2],
+#         "suggestions": suggestions[:3],
+#         "evidence": evidence[:3],
+#     }
+
 def _parse_review_text_sections(raw_text: str, review_payload: Dict[str, Any], compact_evidence: List[str]) -> Dict[str, Any]:
     text = strip_code_fence(strip_think(raw_text))
 
     summary_block = _extract_heading_block(
         text,
-        ["Summary", "总结"],
-        ["Turning Points", "转折点", "关键点", "Mistakes", "问题", "Suggestions", "建议", "Evidence", "依据", "证据"],
+        ["[SUMMARY]"],
+        ["[TURNING_POINTS]", "[MISTAKES]", "[SUGGESTIONS]", "[EVIDENCE]"],
     )
     turning_block = _extract_heading_block(
         text,
-        ["Turning Points", "转折点", "关键点"],
-        ["Mistakes", "问题", "Suggestions", "建议", "Evidence", "依据", "证据"],
+        ["[TURNING_POINTS]"],
+        ["[MISTAKES]", "[SUGGESTIONS]", "[EVIDENCE]"],
     )
     mistakes_block = _extract_heading_block(
         text,
-        ["Mistakes", "问题"],
-        ["Suggestions", "建议", "Evidence", "依据", "证据"],
+        ["[MISTAKES]"],
+        ["[SUGGESTIONS]", "[EVIDENCE]"],
     )
     suggestions_block = _extract_heading_block(
         text,
-        ["Suggestions", "建议"],
-        ["Evidence", "依据", "证据"],
+        ["[SUGGESTIONS]"],
+        ["[EVIDENCE]"],
     )
     evidence_block = _extract_heading_block(
         text,
-        ["Evidence", "依据", "证据"],
+        ["[EVIDENCE]"],
         [],
     )
 
-    summary = ""
-    if summary_block:
-        summary = _clip_text(summary_block.splitlines()[0], 240)
-    else:
-        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        for ln in lines:
-            if len(ln) >= 8 and "总结" not in ln and "Turning Points" not in ln:
-                summary = _clip_text(ln, 240)
-                break
-
-    turning_points = _extract_bullets(turning_block, max_items=3) if turning_block else []
-    mistakes = _extract_bullets(mistakes_block, max_items=2) if mistakes_block else []
-    suggestions = _extract_bullets(suggestions_block, max_items=3) if suggestions_block else []
-
-    # Evidence stays sourced from retrieved chunks unless model explicitly gives section text
-    evidence = _extract_bullets(evidence_block, max_items=3) if evidence_block else compact_evidence[:3]
-    if not evidence:
-        evidence = compact_evidence[:3]
-
     defaults = _build_human_review_defaults(review_payload, compact_evidence)
-    if not summary:
-        summary = defaults["summary"]
-    if not turning_points:
-        turning_points = defaults["turning_points"][:3]
-    if not mistakes:
-        mistakes = defaults["mistakes"][:2]
-    if not suggestions:
-        suggestions = defaults["suggestions"][:3]
+
+    summary = _clip_text(summary_block.splitlines()[0], 240) if summary_block else defaults["summary"]
+    turning_points = _extract_bullets(turning_block, max_items=3) if turning_block else defaults["turning_points"][:3]
+    mistakes = _extract_bullets(mistakes_block, max_items=2) if mistakes_block else defaults["mistakes"][:2]
+    suggestions = _extract_bullets(suggestions_block, max_items=3) if suggestions_block else defaults["suggestions"][:3]
+    evidence = _extract_bullets(evidence_block, max_items=3) if evidence_block else compact_evidence[:3]
 
     return {
         "summary": summary,
@@ -319,8 +368,6 @@ def _parse_review_text_sections(raw_text: str, review_payload: Dict[str, Any], c
         "suggestions": suggestions[:3],
         "evidence": evidence[:3],
     }
-
-
 def _personality_defaults(personality_type: str) -> Dict[str, Any]:
     mapping: Dict[str, Dict[str, Any]] = {
         "稳健防守型": {
@@ -433,6 +480,82 @@ class LLMClient:
         )
         return self._parse_move_response(response.choices[0].message.content)
 
+#     def generate_review(self, review_payload: Dict[str, Any], retrieved_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+#         self._ensure_client()
+
+#         context_block = review_payload.get("context") if isinstance(review_payload.get("context"), dict) else review_payload
+#         key_moments = review_payload.get("key_moments", []) if isinstance(review_payload.get("key_moments"), list) else []
+#         signals = review_payload.get("signals", {}) if isinstance(review_payload.get("signals"), dict) else {}
+#         style_profile = review_payload.get("style_profile", {}) if isinstance(review_payload.get("style_profile"), dict) else {}
+
+#         compact_context = _compact_review_context(context_block)
+#         compact_moments = _compact_key_moments(key_moments, limit=4)
+#         compact_evidence = _compact_retrieved_chunks(retrieved_chunks, limit=3)
+#         compact_signals = {
+#             "human_bad_steps": [
+#                 {"step_id": item.get("step_id"), "summary": _clip_text(item.get("summary", ""), 120)}
+#                 for item in signals.get("human_bad_steps", [])[:2]
+#             ],
+#             "human_good_steps": [
+#                 {"step_id": item.get("step_id"), "summary": _clip_text(item.get("summary", ""), 120)}
+#                 for item in signals.get("human_good_steps", [])[:2]
+#             ],
+#             "pattern_counts": signals.get("pattern_counts", {}),
+#         }
+#         compact_style = _format_style_profile(style_profile)
+
+#         prompt = f"""你是一个五子棋复盘助手。
+
+# 请根据给定的对局摘要、关键步、结构化信号和策略资料，输出一份给“玩家（黑棋）”看的复盘。不要输出 JSON，请直接按下面栏目输出中文内容：
+
+# Summary:
+# 用1-2句总结整盘棋的关键。
+
+# Turning Points:
+# - 2到3条关键步说明，尽量写明第几步。
+
+# Mistakes:
+# - 1到2条玩家的问题，只写玩家，不要写AI的问题。
+
+# Suggestions:
+# - 2到3条给玩家的具体建议。
+
+# Evidence:
+# - 2到3条策略资料依据。
+
+# 对局摘要：
+# {json.dumps(compact_context, ensure_ascii=False)}
+
+# 关键步：
+# {json.dumps(compact_moments, ensure_ascii=False)}
+
+# 结构化信号：
+# {json.dumps(compact_signals, ensure_ascii=False)}
+
+# 玩家棋风：
+# {json.dumps(compact_style, ensure_ascii=False)}
+
+# 策略资料：
+# {json.dumps(compact_evidence, ensure_ascii=False)}
+# """
+#         response = self.client.chat.completions.create(
+#             model=self.model,
+#             messages=[
+#                 {"role": "system", "content": "你是严谨的五子棋复盘助手。不要输出 JSON，不要输出思考过程，只按 Summary/Turning Points/Mistakes/Suggestions/Evidence 五个栏目输出。"},
+#                 {"role": "user", "content": prompt},
+#             ],
+#             temperature=0.2,
+#             max_tokens=650,
+#         )
+
+#         raw_content = response.choices[0].message.content or ""
+#         print("=== review raw content ===")
+#         print(raw_content)
+
+#         parsed = _parse_review_text_sections(raw_content, review_payload, compact_evidence)
+#         print("=== review parsed from text sections ===")
+#         print(json.dumps(parsed, ensure_ascii=False, indent=2))
+#         return parsed
     def generate_review(self, review_payload: Dict[str, Any], retrieved_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         self._ensure_client()
 
@@ -459,45 +582,60 @@ class LLMClient:
 
         prompt = f"""你是一个五子棋复盘助手。
 
-请根据给定的对局摘要、关键步、结构化信号和策略资料，输出一份给“玩家（黑棋）”看的复盘。不要输出 JSON，请直接按下面栏目输出中文内容：
+    请根据给定的对局摘要、关键步、结构化信号和策略资料，
+    输出一份给“玩家（黑棋）”看的复盘。
 
-Summary:
-用1-2句总结整盘棋的关键。
+    严格要求：
+    1. 不要输出 JSON
+    2. 不要输出 Markdown
+    3. 不要输出思考过程
+    4. 所有自然语言必须使用简体中文
+    5. 必须严格使用下面 5 个分隔标记，且每个标记独占一行
+    6. 不要输出任何额外标题，不要解释这些标记
 
-Turning Points:
-- 2到3条关键步说明，尽量写明第几步。
+    输出格式必须严格如下：
 
-Mistakes:
-- 1到2条玩家的问题，只写玩家，不要写AI的问题。
+    [SUMMARY]
+    用 1-2 句总结整盘棋的关键。
 
-Suggestions:
-- 2到3条给玩家的具体建议。
+    [TURNING_POINTS]
+    - 2到3条关键步说明，尽量写明第几步。
 
-Evidence:
-- 2到3条策略资料依据。
+    [MISTAKES]
+    - 1到2条玩家的问题，只写玩家，不要写 AI 的问题。
 
-对局摘要：
-{json.dumps(compact_context, ensure_ascii=False)}
+    [SUGGESTIONS]
+    - 2到3条给玩家的具体建议。
 
-关键步：
-{json.dumps(compact_moments, ensure_ascii=False)}
+    [EVIDENCE]
+    - 2到3条策略资料依据。
 
-结构化信号：
-{json.dumps(compact_signals, ensure_ascii=False)}
+    对局摘要：
+    {json.dumps(compact_context, ensure_ascii=False)}
 
-玩家棋风：
-{json.dumps(compact_style, ensure_ascii=False)}
+    关键步：
+    {json.dumps(compact_moments, ensure_ascii=False)}
 
-策略资料：
-{json.dumps(compact_evidence, ensure_ascii=False)}
-"""
+    结构化信号：
+    {json.dumps(compact_signals, ensure_ascii=False)}
+
+    玩家棋风：
+    {json.dumps(compact_style, ensure_ascii=False)}
+
+    策略资料：
+    {json.dumps(compact_evidence, ensure_ascii=False)}
+    """
+
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "你是严谨的五子棋复盘助手。不要输出 JSON，不要输出思考过程，只按 Summary/Turning Points/Mistakes/Suggestions/Evidence 五个栏目输出。"},
+                {
+                    "role": "system",
+                    "content": "你是严谨的五子棋复盘助手。不要输出 JSON，不要输出思考过程，只允许使用 [SUMMARY]、[TURNING_POINTS]、[MISTAKES]、[SUGGESTIONS]、[EVIDENCE] 五个分隔标记，且每个标记必须独占一行。"
+                },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.2,
+            temperature=0.05,
             max_tokens=650,
         )
 
@@ -505,11 +643,24 @@ Evidence:
         print("=== review raw content ===")
         print(raw_content)
 
+        required_markers = ["[SUMMARY]", "[TURNING_POINTS]", "[MISTAKES]", "[SUGGESTIONS]", "[EVIDENCE]"]
+        if not all(marker in raw_content for marker in required_markers):
+            defaults = _build_human_review_defaults(review_payload, compact_evidence)
+            parsed = {
+                "summary": defaults["summary"],
+                "turning_points": defaults["turning_points"][:3],
+                "mistakes": defaults["mistakes"][:2],
+                "suggestions": defaults["suggestions"][:3],
+                "evidence": defaults["evidence"][:3],
+            }
+            print("=== review fallback parsed ===")
+            print(json.dumps(parsed, ensure_ascii=False, indent=2))
+            return parsed
+
         parsed = _parse_review_text_sections(raw_content, review_payload, compact_evidence)
-        print("=== review parsed from text sections ===")
+        print("=== review parsed from marker sections ===")
         print(json.dumps(parsed, ensure_ascii=False, indent=2))
         return parsed
-
     def _build_personality_from_style_profile(self, style_profile: Dict[str, Any], review_result: Dict[str, Any]) -> Dict[str, Any]:
         primary = _canonical_personality_type(style_profile.get("primary_style"))
         defaults = _personality_defaults(primary)
@@ -598,40 +749,50 @@ Evidence:
     def generate_move_explanation(self, question: str, step_context: Dict[str, Any], chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
         self._ensure_client()
         evidence = _compact_retrieved_chunks(chunks, limit=2)
+
         prompt = f"""
-你是五子棋解释助手。请结合一步棋的上下文解释“为什么 AI 这样下”。
+    你是五子棋讲解助手。请结合一步棋的上下文，解释“为什么 AI 这样下”。
 
-问题：
-{question}
+    问题：
+    {question}
 
-落子上下文：
-{json.dumps(step_context, ensure_ascii=False)}
+    落子上下文：
+    {json.dumps(step_context, ensure_ascii=False)}
 
-策略资料：
-{json.dumps(evidence, ensure_ascii=False)}
+    策略资料：
+    {json.dumps(evidence, ensure_ascii=False)}
 
-只输出 JSON：
-{{
-  "explanation": "......",
-  "evidence": ["......", "......"],
-  "alternatives": ["......"]
-}}
-"""
+    要求：
+    1. 所有自然语言输出必须使用简体中文
+    2. 不要输出英文标题
+    3. 不要输出 Markdown
+    4. 只输出 JSON，不要输出任何解释文字或思考过程
+
+    返回格式：
+    {{
+    "explanation": "用中文解释这一步为什么这样下",
+    "evidence": ["中文依据1", "中文依据2"],
+    "alternatives": ["中文备选思路1", "中文备选思路2"]
+    }}
+    """
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "你是严格输出 JSON 的五子棋解释助手。"},
+                    {"role": "system", "content": "你是严格输出中文 JSON 的五子棋解释助手。除 JSON 外不要输出任何内容。"},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.15,
+                temperature=0.1,
                 max_tokens=260,
             )
             parsed = safe_json_loads(response.choices[0].message.content or "")
             if isinstance(parsed, dict):
                 return {
-                    "explanation": _clip_text(parsed.get("explanation") or step_context.get("reasoning") or "AI 根据当前局面的攻防关系选择了这一步。", 220),
-                    "evidence": evidence,
+                    "explanation": _clip_text(
+                        parsed.get("explanation") or step_context.get("reasoning") or "AI 根据当前局面的攻防关系选择了这一步。",
+                        220,
+                    ),
+                    "evidence": _normalize_string_list(parsed.get("evidence"), max_items=2, fallback=evidence),
                     "alternatives": _normalize_string_list(parsed.get("alternatives"), max_items=2),
                 }
         except Exception:
@@ -703,10 +864,12 @@ RAG 知识：
 
 请直接回答这个问题。
 要求：
-1. 只输出最终答案
-2. 不要重复题目或提示词
-3. 不要输出“你是一个…”之类内容
-4. 用简洁自然语言解释
+1. 所有自然语言输出必须使用简体中文
+2. 只输出最终答案
+3. 不要重复题目或提示词
+4. 不要输出“你是一个……”之类说明
+5. 不要输出英文标题
+6. 用简洁、自然、直接的中文解释
 """
         response = self.client.chat.completions.create(
             model=self.model,

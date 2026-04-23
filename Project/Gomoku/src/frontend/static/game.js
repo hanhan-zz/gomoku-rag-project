@@ -451,15 +451,15 @@ function renderReview(data) {
     const evidence = Array.isArray(data?.evidence) ? data.evidence : [];
 
     reviewPanel.innerHTML = `
-        <h3>Post-game Review</h3>
-        <p><strong>Summary:</strong> ${escapeHtml(summary)}</p>
-        <p><strong>Turning Points</strong></p>
+        <h3>棋局复盘</h3>
+        <p><strong>总结:</strong> ${escapeHtml(summary)}</p>
+        <p><strong>关键点</strong></p>
         <ul>${turningPoints.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-        <p><strong>Mistakes</strong></p>
+        <p><strong>失误</strong></p>
         <ul>${mistakes.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-        <p><strong>Suggestions</strong></p>
+        <p><strong>建议</strong></p>
         <ul>${suggestions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
-        <p><strong>Evidence</strong></p>
+        <p><strong>参考</strong></p>
         <ul>${evidence.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     `;
 }
@@ -477,7 +477,7 @@ function renderPersonality(data) {
 
     personalityPanel.style.display = 'block';
     personalityPanel.innerHTML = `
-        <h3>Gomoku Personality Test</h3>
+        <h3>棋风人格测试</h3>
         <div class="personality-tag">${escapeHtml(personalityType)}</div>
         <p><strong>称号：</strong>${escapeHtml(title)}</p>
         <p><strong>画像描述：</strong>${escapeHtml(description)}</p>
